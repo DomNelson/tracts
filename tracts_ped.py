@@ -172,12 +172,18 @@ class Pedigree:
                 if ind.depth == self.Gens - i and ind.ancestry is None:
                     for k in range(len(ChromLengths)):
                         try:
-                            chrom0 = recombine(ind.parentlist[0].chromosomes['M' + str(k)], 
-                                                   ind.parentlist[0].chromosomes['F' + str(k)],
-                                                   smoothed)
-                            chrom1 = recombine(ind.parentlist[1].chromosomes['M' + str(k)], 
-                                                   ind.parentlist[1].chromosomes['F' + str(k)],
-                                                   smoothed)
+                            m0 = ind.parentlist[0].chromosomes['M' + str(k)]
+                            m1 = ind.parentlist[0].chromosomes['F' + str(k)]
+                            mom_chroms = tracts.chropair([m0, m1])
+                            chrom0 = mom_chroms.recombine()
+                            chrom0._smooth()
+                            
+                            f0 = ind.parentlist[1].chromosomes['M' + str(k)]
+                            f1 = ind.parentlist[1].chromosomes['F' + str(k)]
+                            dad_chroms = tracts.chropair([f0, f1])
+                            chrom1 = dad_chroms.recombine()
+                            chrom1._smooth()
+                            
                             ind.chromosomes['M' + str(k)] = chrom0
                             ind.chromosomes['F' + str(k)] = chrom1
                         except KeyError:
@@ -195,10 +201,16 @@ class Pedigree:
         if self.Gamete is True:
             hapind = indiv(depth = -1, chromosomes = None)
             for i in range(len(ChromLengths)):
-                self.gamete = recombine(self.indlist[0].chromosomes['M' + str(i)], 
-                                           self.indlist[0].chromosomes['F' + str(i)],
-                                           smoothed = True)
-                hapind.chromosomes[str(i)] = self.gamete
+                m0 = self.indlist[0].chromosomes['M' + str(i)]
+                m1 = self.indlist[0].chromosomes['F' + str(i)]
+                chroms = tracts.chropair([m0, m1])
+                newchrom = chroms.recombine()
+                newchrom._smooth()                
+                
+#                self.gamete = recombine(self.indlist[0].chromosomes['M' + str(i)], 
+#                                           self.indlist[0].chromosomes['F' + str(i)],
+#                                           smoothed = True)
+                hapind.chromosomes[str(i)] = newchrom
             ## Once done, add the haploid individual to the beginning of
             ## the indlist
             self.indlist = [hapind] + self.indlist
@@ -377,93 +389,3 @@ class indiv:
             return int(s, 2)
         else:
             return 0
-
-
-def recombine(chromosome0, chromosome1, smoothed = True):
-    assert chromosome0.get_len() == chromosome1.get_len(), "Mismatched chromosomes"
-    events = 0
-    while events == 0:
-        events = np.random.poisson(lam = chromosome0.get_len())
-    #print "Number of recombination events:", events
-    switchpoints = []
-    switchpoints.extend(np.random.uniform(0, chromosome0.get_len(), events))
-    switchpoints.sort()
-    newtracts = []
-    index = [0, 0] 
-    chromo_pair = [chromosome0.tracts, chromosome1.tracts]
-    currentchrom = np.random.random_integers(0,1)
-    
-    for i in range(events):
-        ##@@ We should also check for the (unlikely) case when a recombination
-        ##@@ lands exactly on a tract switch. I'm sure this could also be 
-        ##@@ cleaned up a bit
-        ## Copy full tracts from the current chromosome until one containing a 
-        ## switchpoint is reached, saving the location on both chromosomes, and
-        ## entering the split tract for the next step
-        if i == 0:
-            while chromo_pair[0][index[0]].end < switchpoints[i]:
-                if currentchrom == 0:
-                    newtracts.append(chromo_pair[0][index[0]])
-                index[0] += 1        
-            while chromo_pair[1][index[1]].end < switchpoints[i]:
-                if currentchrom == 1:
-                    newtracts.append(chromo_pair[1][index[1]])
-                index[1] += 1
-        else:
-            while chromo_pair[0][index[0]].end < switchpoints[i]:
-                if currentchrom == 0 and chromo_pair[0][index[0]].start > switchpoints[i - 1]:
-                    newtracts.append(chromo_pair[0][index[0]])
-                index[0] += 1        
-            while chromo_pair[1][index[1]].end < switchpoints[i]:
-                if currentchrom == 1 and chromo_pair[1][index[1]].start > switchpoints[i - 1]:
-                    newtracts.append(chromo_pair[1][index[1]])
-                index[1] += 1
-        
-        ## Now that we have found the tracts, copy up to the current switch
-        ## point, from either the start of the tract or the last switch,
-        ## whichever is closer.
-        if i == 0:
-            start = chromo_pair[currentchrom][index[currentchrom]].start
-            end = switchpoints[i]
-        else:
-            start = np.max([chromo_pair[currentchrom][index[currentchrom]].start, 
-                            switchpoints[i - 1]])
-            end = switchpoints[i]
-        label = chromo_pair[currentchrom][index[currentchrom]].label    
-        if start > end:
-            print "Bad order, ", start, end
-        
-        newtracts.append(tracts.tract(start, end, label))
-        
-        ## Switch chromosomes following recombination
-        if currentchrom == 0:
-            currentchrom = 1
-        elif currentchrom == 1:
-            currentchrom = 0
-        else:
-            print "oops!"        
-        
-        ## Need to catch the last section of a tract after the recombinations
-        ## it contains, otherwise we would skip to the start of the next tract
-        if i < (events - 1):
-            if chromo_pair[currentchrom][index[currentchrom]].end < switchpoints[i + 1]:
-                start = switchpoints[i]
-                end = chromo_pair[currentchrom][index[currentchrom]].end
-                label = chromo_pair[currentchrom][index[currentchrom]].label
-                newtracts.append(tracts.tract(start, end, label))
-
-    ## Add remaining partial tract following last recombination event, then add all
-    ## following complete tracts.
-    ##@@ Should this be switchpoints[events - 1]?
-    start = switchpoints[-1]
-    end = chromo_pair[currentchrom][index[currentchrom]].end
-    label = chromo_pair[currentchrom][index[currentchrom]].label
-    newtracts.append(tracts.tract(start, end, label))
-
-    for i in range(index[currentchrom] + 1, len(chromo_pair[currentchrom])):
-        newtracts.append(chromo_pair[currentchrom][i])
-    
-    newchrom = tracts.chrom(ls = chromosome0.get_len(), tracts = newtracts)
-    if smoothed is True:
-        newchrom._smooth()
-    return newchrom
