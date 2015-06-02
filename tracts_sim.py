@@ -16,7 +16,6 @@ import sys
 
 # MigrantProps = [0.2, 0.05] # Proportion of pedigree that will be new migrants
 # MigPropMat = [[8, 0.1, 0], [12, 0, 0.1]]
-SourceProps = [0.5, 0.5]
 DemeSwitch = 0.1 # Chance of child leaving deme of parents
 rho = 1 # Recombination rate
 RecentMigrants = True
@@ -52,9 +51,8 @@ for i in range(numinds):
                      RecentMigrants = RecentMigrants, 
                      AllAncestry = AllAncestry,
                      DemeSwitch = DemeSwitch,
-                     SourceProps = SourceProps,
                      MigPropMat = migmat)
-    print i                     
+    print "Simulating individual", i, "of", numinds                     
 #    print "Creating individuals..."
     #a.MakePedigree(DemeSwitch = DemeSwitch, MigrantProps = MigrantProps, 
         # RecentMigrants = RecentMigrants)
