@@ -206,90 +206,11 @@ class Pedigree:
                 chroms = tracts.chropair([m0, m1])
                 newchrom = chroms.recombine()
                 newchrom._smooth()                
-                
-#                self.gamete = recombine(self.indlist[0].chromosomes['M' + str(i)], 
-#                                           self.indlist[0].chromosomes['F' + str(i)],
-#                                           smoothed = True)
                 hapind.chromosomes[str(i)] = newchrom
             ## Once done, add the haploid individual to the beginning of
             ## the indlist
             self.indlist = [hapind] + self.indlist
-            
-    
-    def BuildTransMatrices(self, stepsize):
-        self.GlobalStepSize = stepsize
-        self.SortLeafNode()
-        ## Create 'biggest possible' matrices, even though some branches may
-        ## terminate early at recent migrants. Two rows for each possible node
-        ## (maternal and paternal side), and one for each possible leaf.
-        ##@@ Should clean up empty rows/columns, or define as sparse matrix
-        self.SparseLtN = sp.csr_matrix((2 * len(self.nodelist), len(self.leaflist)))
-        self.SparseNtL = sp.csr_matrix((2 * len(self.nodelist), len(self.leaflist)))
-        self.NonSelf = self.rho * self.GlobalStepSize * self.Gens
-        self.Self = 1 - self.NonSelf
-        self.LtN = np.zeros((2 * len(self.nodelist), len(self.leaflist)))
-        self.NtL = np.zeros((2 * len(self.nodelist), len(self.leaflist)))        
-        
-        for i in range(len(self.leaflist)):
-            ## Transition probability depends on leaf depth, which is also 
-            ## equal to its number of descendants
-            TransitionProb = 1. / self.leaflist[i].depth
-            for descendant in self.leaflist[i].descendants:
-                ## Check if we are coming from maternal (0) or paternal (1) 
-                ## side. Rows are determined by adding the individuals binary
-                ## position (ie 1, 0, 1 = 5) to the maximum possible number of
-                ## individuals from all previous generations.
-                if self.leaflist[i].position[descendant.depth] == 0:
-                    ##@@ Why? print "Leaflist", i, ", Descendant depth", descendant.depth
-                    LtNRow = 2 * (descendant.label)
-                elif self.leaflist[i].position[descendant.depth] == 1:
-                    LtNRow = 2 * (descendant.label) + 1
-                ##@@ Why? print 2 * (2 ** descendant.depth - 1 + descendant.PosAsBinary())
-                try:
-                    self.LtN[LtNRow][i] = TransitionProb
-                except IndexError:
-                    print "Out of bounds: Row", i, "does not exist"
-        self.SparseLtN = sp.csr_matrix(self.LtN)
-        
-        for i in range(len(self.leaflist)):
-            for descendant in self.leaflist[i].descendants:
-                ## Check if we are coming from maternal (0) or paternal (1) 
-                ## side. Rows are determined by adding the individuals binary
-                ## position (ie 1, 0, 1 = 5) to the maximum possible number of
-                ## individuals from all previous generations. Select opposite
-                ## maternal/paternal row compared to LtN above.
-                if self.leaflist[i].position[descendant.depth] == 0:
-                    NtLRow = 2 * (descendant.label) + 1
-                elif self.leaflist[i].position[descendant.depth] == 1:
-                    NtLRow = 2 * (descendant.label)
-                self.NtL[NtLRow][i] = 1. / 2 ** (self.leaflist[i].depth - descendant.depth - 1)
-        self.SparseNtL = sp.csr_matrix(self.NtL)
-               
-    def TransMatrixCombine(self):
-        Mult = np.dot(np.transpose(self.LtN), self.NtL)
 
-        for i in range(len(self.leaflist)):
-            
-            NonSelf = self.rho * self.GlobalStepSize * self.Gens
-                
-            assert NonSelf < 1, "Self-Transition probability > 1 %f" % (1 - NonSelf)
-            assert NonSelf > 0, "Self-Transition probability < 0 %f" % (1 - NonSelf)
-            
-            ## Scaling of transition probabilities
-            Mult[:,i] *= NonSelf
-            ## Self-transition probability
-            Mult[i][i] = 1 - NonSelf
-        
-        #print "Self-transition probability: ", 1 - NonSelf
-        return Mult
-        
-    def BuildEmissionMatrix(self):
-        ##@@ So far only 2 different ancestries/emitted symbols
-        EmissionMatrix = np.zeros([len(self.leaflist), 2])
-        for i in range(len(self.leaflist)):
-            EmissionMatrix[i][self.leaflist[i].ancestry] = 1
-        
-        return EmissionMatrix
         
     def PlotPedigree(self, indlabels = True, tractlabels = False, 
                      showgamete = False, outfile = None):
@@ -389,3 +310,9 @@ class indiv:
             return int(s, 2)
         else:
             return 0
+            
+    def to_tracts_indiv(self):
+        chromlengths = [chrom.get_len() for chrom in self.chromosomes.values()]
+        tractsind = tracts.indiv(Ls = chromlengths, label = self.ancestry)
+        tractsind.chroms = self.chromosomes.values()
+        return tractsind
