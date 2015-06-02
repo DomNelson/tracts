@@ -34,7 +34,7 @@ def weighted_choice(weights):
 
 class Pedigree:
     def __init__(self, sampleind, Gens, RecentMigrants, AllAncestry,
-                 DemeSwitch, SourceProps, MigPropMat):
+                 DemeSwitch, MigPropMat):
         if sampleind is None:
             self.sampleind = indiv()
         else:
@@ -44,7 +44,6 @@ class Pedigree:
         self.Gens = Gens
         self.RecentMigrants = RecentMigrants
         self.AllAncestry = AllAncestry
-        self.SourceProps = SourceProps
         self.MigPropMat = MigPropMat#self.expand_migmat(MigPropMat)
         self.currentgenlist = self.indlist
         
@@ -102,7 +101,7 @@ class Pedigree:
             return migindex
         else:
             if depth == self.Gens:
-                sourceindex = weighted_choice(self.SourceProps)
+                sourceindex = weighted_choice(self.MigPropMat[depth])
                 return sourceindex
             # else:
             #     return None
