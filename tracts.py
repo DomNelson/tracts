@@ -370,6 +370,7 @@ class indiv:
     def applychrom(self, func):
         """ Apply the function `func` to each chromosome of the individual. """
         return map(lambda c: c.applychrom(func), self.chroms)
+#        return map(lambda c: c.func, self.chroms)
 
     def ancestryAmt(self, ancestry):
         """ Calculate the total length of the genome in segments of the given
@@ -762,9 +763,13 @@ class population:
         f = lambda i: i.merge_ancestries(ancestries, newlabel)
         self.applychrom(f)
 
-    def plot_global_tractlengths(self, colordict, npts=40, legend=True):
-        dat = self.applychrom(chrom.tractlengths)
-        flatdat = self.flatpop(dat)
+    def plot_global_tractlengths(self, colordict, npts=40, legend=True, outfile = None):
+#        dat = self.applychrom(chrom.tractlengths)
+#        flatdat = self.flatpop(dat)
+        flatdat = []
+        for ind in self.indivs:
+            for chrom in ind.chroms:
+                flatdat.extend(chrom.tractlengths())
         bypop = self.__collectpop__(flatdat)
         self.maxLen = max(self.Ls)
         for key, item in bypop.iteritems():
@@ -776,6 +781,8 @@ class population:
         pylab.ylabel("counts")
         if legend:
             pylab.legend()
+        if outfile:
+            pylab.savefig(outfile)
 
     def get_global_tractlengths(self,npts=20,tol=0.01,indlist=None):
         """ tol is the tolerance for full chromosomes: sometimes there are
