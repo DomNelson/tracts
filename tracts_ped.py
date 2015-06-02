@@ -45,7 +45,7 @@ class Pedigree:
         self.RecentMigrants = RecentMigrants
         self.AllAncestry = AllAncestry
         self.SourceProps = SourceProps
-        self.MigPropMat = self.expand_migmat(MigPropMat)
+        self.MigPropMat = MigPropMat#self.expand_migmat(MigPropMat)
         self.currentgenlist = self.indlist
         
         for i in range(self.Gens):
@@ -97,10 +97,8 @@ class Pedigree:
         if depth > len(self.MigPropMat):
             print "Error: No migrant proportions for generation", depth
             sys.exit()
-        ## Migrant matrix uses depth - 1 since the sequenced individual
-        ## at depth = 0 can't be a migrant, reducing rows by 1
-        if np.random.random() < np.sum(self.MigPropMat[depth - 1]):
-            migindex = weighted_choice(self.MigPropMat[depth - 1])
+        if np.random.random() < np.sum(self.MigPropMat[depth]):
+            migindex = weighted_choice(self.MigPropMat[depth])
             return migindex
         else:
             if depth == self.Gens:
