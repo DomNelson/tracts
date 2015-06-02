@@ -5,16 +5,18 @@ Created on Wed Jan 28 14:33:24 2015
 @author: dominic
 """
 import matplotlib.pylab as pylab
-
+import numpy as np
 import tracts_ped as ped
 #import hmm_struct as struct
 #import hmm_struct as struct
 #import hmm_pedigree_old as old
 import os
+import tracts
+import sys
 
 # MigrantProps = [0.2, 0.05] # Proportion of pedigree that will be new migrants
-MigPropMat = [[15, 0, 0.5]]
-SourceProps = [1, 0]
+# MigPropMat = [[8, 0.1, 0], [12, 0, 0.1]]
+SourceProps = [0.5, 0.5]
 DemeSwitch = 0.1 # Chance of child leaving deme of parents
 rho = 1 # Recombination rate
 RecentMigrants = True
@@ -22,7 +24,8 @@ RecentMigrants = True
 ## are not a leaf
 AllAncestry = True
 GlobalStepSize = 0.01
-outfile = os.path.expanduser('test.jpg')
+colordict = {0:'red', 1:'blue'}
+
 
 ChromLengths = [2.865747830, 2.64751457082595, 2.23363180733515, 
                 2.15492839808593, 2.04089356863902, 1.92039918028429, 
@@ -34,32 +37,45 @@ ChromLengths = [2.865747830, 2.64751457082595, 2.23363180733515,
                 0.741095623349923]
                 
 
-sim_ped = ped.Pedigree(sampleind = None, 
-                 Gens = 15, 
-                 RecentMigrants = RecentMigrants, 
-                 AllAncestry = AllAncestry,
-                 DemeSwitch = DemeSwitch,
-                 SourceProps = SourceProps,
-                 MigPropMat = MigPropMat)
-                 
-print "Creating individuals..."
-#a.MakePedigree(DemeSwitch = DemeSwitch, MigrantProps = MigrantProps, 
-    # RecentMigrants = RecentMigrants)
-print "Sorting individuals..."
-sim_ped.SortLeafNode()
-# inds = sim_ped.indlist
+migfile = sys.argv[1]
+plotoutfile = os.path.expanduser(sys.argv[2])
+numinds = int(sys.argv[3])
 
-print "Building chromosomes..."
-sim_ped.MakeGenomes(ChromLengths = ChromLengths, rho = rho, smoothed = True,
-                     Gamete = True)
-                     
-samp_ind = sim_ped.indlist[1]
-samp_chrom1 = samp_ind.chromosomes['M0']
-for tract in samp_chrom1.tracts:
-    print tract.label
-#struct.PlotChrom(samp_ind.chromosomes.values())
-#gamete = sim_ped.indlist[0]
-#struct.PlotChrom(gamete.chromosomes.values())
+migmat = np.genfromtxt(migfile)
+gens = len(migmat)
 
 
-
+indlist = []
+for i in range(numinds):
+    sim_ped = ped.Pedigree(sampleind = None, 
+                     Gens = gens, 
+                     RecentMigrants = RecentMigrants, 
+                     AllAncestry = AllAncestry,
+                     DemeSwitch = DemeSwitch,
+                     SourceProps = SourceProps,
+                     MigPropMat = migmat)
+    print i                     
+#    print "Creating individuals..."
+    #a.MakePedigree(DemeSwitch = DemeSwitch, MigrantProps = MigrantProps, 
+        # RecentMigrants = RecentMigrants)
+#    print "Sorting individuals..."
+    sim_ped.SortLeafNode()
+    # inds = sim_ped.indlist
+    
+#    print "Building chromosomes..."
+    sim_ped.MakeGenomes(ChromLengths = ChromLengths, rho = rho, smoothed = True,
+                         Gamete = False)
+                         
+    samp_ind = sim_ped.indlist[0]
+    tracts_ind = samp_ind.to_tracts_indiv()
+    indlist.append(tracts_ind)
+#    samp_chrom1 = samp_ind.chromosomes['M0']
+#    for tract in samp_chrom1.tracts:
+#        print tract.label
+    #struct.PlotChrom(samp_ind.chromosomes.values())
+    #gamete = sim_ped.indlist[0]
+    #struct.PlotChrom(gamete.chromosomes.values())
+    
+    
+pop = tracts.population(list_indivs = indlist)
+pop.plot_global_tractlengths(colordict, outfile = plotoutfile)
