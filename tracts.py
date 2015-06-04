@@ -764,12 +764,12 @@ class population:
         self.applychrom(f)
 
     def plot_global_tractlengths(self, colordict, npts=40, legend=True, outfile = None):
-#        dat = self.applychrom(chrom.tractlengths)
-#        flatdat = self.flatpop(dat)
-        flatdat = []
-        for ind in self.indivs:
-            for chrom in ind.chroms:
-                flatdat.extend(chrom.tractlengths())
+        dat = self.applychrom(chrom.tractlengths)
+        flatdat = self.flatpop(dat)
+        # flatdat = []
+        # for ind in self.indivs:
+        #     for chrom in ind.chroms:
+        #         flatdat.extend(chrom.tractlengths())
         bypop = self.__collectpop__(flatdat)
         self.maxLen = max(self.Ls)
         for key, item in bypop.iteritems():
@@ -802,6 +802,10 @@ class population:
 
         dat=self.applychrom(chrom.tractlengths, indlist=indlist)
         flatdat=self.flatpop(dat)
+        # flatdat = []
+        # for ind in self.indivs:
+        #     for chrom in ind.chroms:
+        #         flatdat.extend(chrom.tractlengths())
         bypop=self.__collectpop__(flatdat)
 
         bins=np.arange(0,self.maxLen*(1+.5/npts),float(self.maxLen)/npts)
