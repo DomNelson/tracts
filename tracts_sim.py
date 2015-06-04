@@ -18,10 +18,8 @@ import sys
 # MigPropMat = [[8, 0.1, 0], [12, 0, 0.1]]
 DemeSwitch = 0.1 # Chance of child leaving deme of parents
 rho = 1 # Recombination rate
-RecentMigrants = True
 ##@@ AllAncestry = True is assumed to assign parents ie no ancestry means you
 ## are not a leaf
-AllAncestry = True
 GlobalStepSize = 0.01
 colordict = {0:'red', 1:'blue'}
 
@@ -41,15 +39,10 @@ plotoutfile = os.path.expanduser(sys.argv[2])
 numinds = int(sys.argv[3])
 
 migmat = np.genfromtxt(migfile)
-gens = len(migmat)
-
 
 indlist = []
 for i in range(numinds):
     sim_ped = ped.Pedigree(sampleind = None, 
-                     Gens = gens, 
-                     RecentMigrants = RecentMigrants, 
-                     AllAncestry = AllAncestry,
                      DemeSwitch = DemeSwitch,
                      MigPropMat = migmat)
     print "Simulating individual", i, "of", numinds                     
@@ -57,7 +50,7 @@ for i in range(numinds):
     #a.MakePedigree(DemeSwitch = DemeSwitch, MigrantProps = MigrantProps, 
         # RecentMigrants = RecentMigrants)
 #    print "Sorting individuals..."
-    sim_ped.SortLeafNode()
+    # sim_ped.SortLeafNode()
     # inds = sim_ped.indlist
     
 #    print "Building chromosomes..."
