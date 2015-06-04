@@ -8,7 +8,6 @@ Created on Wed Dec 10 15:32:35 2014
 import numpy as np
 import scipy.sparse as sp
 import PIL.ImageDraw as ImageDraw, PIL.Image as Image, PIL.ImageFont as ImageFont
-#import hmm_struct as struct
 import sys
 import tracts
 from collections import OrderedDict
@@ -33,18 +32,17 @@ def weighted_choice(weights):
 ## 3) chance that the individual is a migrant (leaf of pedigree)
 
 class Pedigree:
-    def __init__(self, sampleind, Gens, RecentMigrants, AllAncestry,
-                 DemeSwitch, MigPropMat):
+    def __init__(self, sampleind, DemeSwitch, MigPropMat):
         if sampleind is None:
             self.sampleind = indiv()
         else:
             self.sampleind = sampleind
         self.indlist = [self.sampleind]
         self.nextgenlist = []
-        self.Gens = Gens
-        self.RecentMigrants = RecentMigrants
-        self.AllAncestry = AllAncestry
-        self.MigPropMat = MigPropMat#self.expand_migmat(MigPropMat)
+        ## Subtract one from length of migration matrix because it
+        ## includes the zeroth generation, ie the sampled individual
+        self.Gens = len(MigPropMat) - 1
+        self.MigPropMat = MigPropMat
         self.currentgenlist = self.indlist
         
         for i in range(self.Gens):
@@ -67,7 +65,6 @@ class Pedigree:
                                            ancestry = mother_ancestry)
                     self.nextgenlist.append(ind_mother)
                     ind.parentlist.append(ind_mother)
-                    
                     
                     ## Create father
                     # father_ancestry = self.SetAncestry(ind.depth + 1)
@@ -161,28 +158,31 @@ class Pedigree:
                                                tracts = [first_tract])
                     chrom1 = tracts.chrom(ls=ChromLengths[i], 
                                                tracts = [first_tract])
-                    ind.chromosomes['M' + str(i)] = chrom0
-                    ind.chromosomes['F' + str(i)] = chrom1
+                    ind.chromosomes[i] = tracts.chropair([chrom0, chrom1])
+                    # ind.chromosomes['F' + str(i)] = chrom1
 
         for i in range(1, self.Gens + 1):
             for ind in self.indlist:
                 if ind.depth == self.Gens - i and ind.ancestry is None:
                     for k in range(len(ChromLengths)):
                         try:
-                            m0 = ind.parentlist[0].chromosomes['M' + str(k)]
-                            m1 = ind.parentlist[0].chromosomes['F' + str(k)]
-                            mom_chroms = tracts.chropair([m0, m1])
+                            # m0 = ind.parentlist[0].chromosomes['M' + str(k)]
+                            # m1 = ind.parentlist[0].chromosomes['F' + str(k)]
+                            # mom_chroms = tracts.chropair([m0, m1])
+                            mom_chroms = ind.parentlist[0].chromosomes[k]
                             chrom0 = mom_chroms.recombine()
                             chrom0._smooth()
                             
-                            f0 = ind.parentlist[1].chromosomes['M' + str(k)]
-                            f1 = ind.parentlist[1].chromosomes['F' + str(k)]
-                            dad_chroms = tracts.chropair([f0, f1])
+                            # f0 = ind.parentlist[1].chromosomes['M' + str(k)]
+                            # f1 = ind.parentlist[1].chromosomes['F' + str(k)]
+                            # dad_chroms = tracts.chropair([f0, f1])
+                            dad_chroms = ind.parentlist[1].chromosomes[k]
                             chrom1 = dad_chroms.recombine()
                             chrom1._smooth()
                             
-                            ind.chromosomes['M' + str(k)] = chrom0
-                            ind.chromosomes['F' + str(k)] = chrom1
+                            ind.chromosomes[k] = tracts.chropair([chrom0, chrom1])
+                            # ind.chromosomes['M' + str(k)] = chrom0
+                            # ind.chromosomes['F' + str(k)] = chrom1
                         except KeyError:
                             print "Chromosome not found: depth", self.Gens - i
                             print ind
@@ -191,19 +191,20 @@ class Pedigree:
                             sys.exit()
 
         for ind in self.indlist:
-            if len(ind.chromosomes) != 2 * len(ChromLengths):
+            if len(ind.chromosomes) != len(ChromLengths):
                 print "Warning: not all chromosomes created!"
                 print len(ind.chromosomes), len(ChromLengths)
                 print ind.position
         if self.Gamete is True:
             hapind = indiv(depth = -1, chromosomes = None)
             for i in range(len(ChromLengths)):
-                m0 = self.indlist[0].chromosomes['M' + str(i)]
-                m1 = self.indlist[0].chromosomes['F' + str(i)]
-                chroms = tracts.chropair([m0, m1])
+                # m0 = self.indlist[0].chromosomes['M' + str(i)]
+                # m1 = self.indlist[0].chromosomes['F' + str(i)]
+                # chroms = tracts.chropair([m0, m1])
+                chroms = self.indlist[0].chromosomes[i]
                 newchrom = chroms.recombine()
                 newchrom._smooth()                
-                hapind.chromosomes[str(i)] = newchrom
+                hapind.chromosomes[i] = newchrom
             ## Once done, add the haploid individual to the beginning of
             ## the indlist
             self.indlist = [hapind] + self.indlist
@@ -288,12 +289,14 @@ class indiv:
         else:
             self.position = position
         if chromosomes is None:
-            ## Two empty lists, one maternal one paternal
             self.chromosomes = OrderedDict()
         else:
             if type(chromosomes) == list:
                 raise
-            self.chromosomes = chromosomes
+            else:
+                self.chromosomes = chromosomes
+        ## We can't have more than two parents
+        assert len(self.parentlist) <= 2
         
     ## Turns individual position to binary number then returns it as an integer
     def PosAsBinary(self):
@@ -309,7 +312,7 @@ class indiv:
             return 0
             
     def to_tracts_indiv(self):
-        chromlengths = [chrom.get_len() for chrom in self.chromosomes.values()]
+        chromlengths = [chropair.applychrom(tracts.chrom.get_len)[0] for chropair in self.chromosomes.values()]
         tractsind = tracts.indiv(Ls = chromlengths, label = self.ancestry)
         tractsind.chroms = self.chromosomes.values()
         return tractsind
