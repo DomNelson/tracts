@@ -13,6 +13,7 @@ import tracts_ped as ped
 import os
 import tracts
 import sys
+import cPickle
 
 # MigrantProps = [0.2, 0.05] # Proportion of pedigree that will be new migrants
 # MigPropMat = [[8, 0.1, 0], [12, 0, 0.1]]
@@ -21,7 +22,7 @@ rho = 1 # Recombination rate
 ##@@ AllAncestry = True is assumed to assign parents ie no ancestry means you
 ## are not a leaf
 GlobalStepSize = 0.01
-colordict = {0:'red', 1:'blue'}
+colordict = {0:'red', 1:'blue', 2:'green'}
 
 
 ChromLengths = [2.865747830, 2.64751457082595, 2.23363180733515, 
@@ -37,6 +38,7 @@ ChromLengths = [2.865747830, 2.64751457082595, 2.23363180733515,
 migfile = sys.argv[1]
 plotoutfile = os.path.expanduser(sys.argv[2])
 numinds = int(sys.argv[3])
+popoutfile = os.path.expanduser(sys.argv[4])
 
 migmat = np.genfromtxt(migfile)
 
@@ -70,3 +72,7 @@ for i in range(numinds):
     
 pop = tracts.population(list_indivs = indlist)
 pop.plot_global_tractlengths(colordict, outfile = plotoutfile)
+
+if popoutfile != "None":
+    with open(popoutfile, 'wb') as f:
+        cPickle.dump(pop, f, cPickle.HIGHEST_PROTOCOL)    
