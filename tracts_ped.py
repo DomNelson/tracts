@@ -316,3 +316,64 @@ class indiv:
         tractsind = tracts.indiv(Ls = chromlengths, label = self.ancestry)
         tractsind.chroms = self.chromosomes.values()
         return tractsind
+        
+    def to_bed_file(self, outfile):
+        header = "Chr\tStart(bp)\tEnd(bp)\tVit\tStart(cM)\tEnd(cM)\tFbk\tConfidence\tPosterior\n"
+        for phase in range(2):
+            if phase == 0:
+                newoutfile = outfile + "_A.bed"
+            elif phase == 1:
+                newoutfile = outfile + "_B.bed"
+            with open(newoutfile, 'w') as f:
+                f.write(header)            
+
+            for i in range(len(self.chromosomes)):
+                with open(newoutfile, 'a') as f:
+                    for tract in self.chromosomes[i].copies[phase].tracts:
+                        line = ""
+                        line += str(i) + "\t"
+                        line += "\t"
+                        line += "\t"
+                        line += "\t"
+                        line += str(tract.start) + "\t"
+                        line += str(tract.end) + "\t"
+                        line += str(tract.label) + "\t"
+                        line += "\n"
+                        
+                        f.write(line)
+
+def tracts_ind_to_bed(ind, outfile):
+    header = "Chr\tStart(bp)\tEnd(bp)\tVit\tStart(cM)\tEnd(cM)\tFbk\tConfidence\tPosterior\n"
+    for phase in range(2):
+        if phase == 0:
+            newoutfile = outfile + "_A.bed"
+        elif phase == 1:
+            newoutfile = outfile + "_B.bed"
+        with open(newoutfile, 'w') as f:
+            f.write(header)            
+
+        for i in range(len(ind.chroms)):
+            with open(newoutfile, 'a') as f:
+                for tract in ind.chroms[i].copies[phase].tracts:
+                    line = ""
+                    line += str(i) + "\t"
+                    line += "\t"
+                    line += "\t"
+                    line += "\t"
+                    line += str(tract.start) + "\t"
+                    line += str(tract.end) + "\t"
+                    line += str(tract.label) + "\t"
+                    line += "\n"
+                    
+                    f.write(line)    
+
+        
+                
+                
+                
+                
+                
+                
+                
+                
+                
