@@ -39,6 +39,7 @@ migfile = sys.argv[1]
 plotoutfile = os.path.expanduser(sys.argv[2])
 numinds = int(sys.argv[3])
 popoutfile = os.path.expanduser(sys.argv[4])
+bedpath = os.path.expanduser(sys.argv[5])
 
 migmat = np.genfromtxt(migfile)
 
@@ -62,10 +63,16 @@ for i in range(numinds):
     samp_ind = sim_ped.indlist[0]
     tracts_ind = samp_ind.to_tracts_indiv()
     indlist.append(tracts_ind)
+    
+    if bedpath != "None":
+        outfile = os.path.join(bedpath, "IND" + str(i))
+        samp_ind.to_bed_file(outfile)
+        outfile = os.path.join(bedpath, "tracts_IND" + str(i))
+        ped.tracts_ind_to_bed(tracts_ind, outfile)
 #    samp_chrom1 = samp_ind.chromosomes['M0']
 #    for tract in samp_chrom1.tracts:
 #        print tract.label
-    #struct.PlotChrom(samp_ind.chromosomes.values())
+    #struct.PlotChrom(samp_ind.chromosomes. values())
     #gamete = sim_ped.indlist[0]
     #struct.PlotChrom(gamete.chromosomes.values())
     
@@ -75,4 +82,6 @@ pop.plot_global_tractlengths(colordict, outfile = plotoutfile)
 
 if popoutfile != "None":
     with open(popoutfile, 'wb') as f:
-        cPickle.dump(pop, f, cPickle.HIGHEST_PROTOCOL)    
+        cPickle.dump(pop, f, cPickle.HIGHEST_PROTOCOL)
+        
+
