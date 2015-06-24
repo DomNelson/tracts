@@ -56,7 +56,7 @@ labels = [0, 2, 1]
 # outdir = "PUR/output/"
 popfile = sys.argv[1]
 outdir = sys.argv[2]
-runboots = range(1)
+runboots = range(100)
 print popfile
 print outdir
 
