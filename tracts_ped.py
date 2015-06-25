@@ -331,7 +331,7 @@ class indiv:
                 with open(newoutfile, 'a') as f:
                     for tract in self.chromosomes[i].copies[phase].tracts:
                         line = ""
-                        line += str(i) + "\t"
+                        line += str(i + 1) + "\t"
                         line += str(0) + "\t"
                         line += str(0) + "\t"
                         line += str(tract.label) + "\t"
@@ -362,7 +362,7 @@ def tracts_ind_to_bed(ind, outfile, conv = None):
             with open(newoutfile, 'a') as f:
                 for tract in ind.chroms[i].copies[phase].tracts:
                     line = ""
-                    line += str(i) + "\t"
+                    line += str(i + 1) + "\t"
                     line += str(0) + "\t"
                     line += str(0) + "\t"
                     line += str(tract.label) + "\t"
