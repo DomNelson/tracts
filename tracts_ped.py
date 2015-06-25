@@ -342,7 +342,7 @@ class indiv:
                         
                         f.write(line)
 
-def tracts_ind_to_bed(ind, outfile):
+def tracts_ind_to_bed(ind, outfile, conv = None):
     header = "Chr\tStart(bp)\tEnd(bp)\tVit\tStart(cM)\tEnd(cM)\tFbk\tConfidence\tPosterior\n"
     for phase in range(2):
         if phase == 0:
@@ -350,19 +350,23 @@ def tracts_ind_to_bed(ind, outfile):
         elif phase == 1:
             newoutfile = outfile + "_B.bed"
         with open(newoutfile, 'w') as f:
-            f.write(header)            
+            f.write(header)
+
+        if conv == "M_cM":
+            conv_fact = 100
+        elif conv == "cM_M":
+            conv_fact = 0.01
 
         for i in range(len(ind.chroms)):
             with open(newoutfile, 'a') as f:
                 for tract in ind.chroms[i].copies[phase].tracts:
                     line = ""
                     line += str(i) + "\t"
-                    line += "\t"
-                    line += "\t"
-                    line += "\t"
-                    line += str(tract.start) + "\t"
-                    line += str(tract.end) + "\t"
+                    line += str(0) + "\t"
+                    line += str(0) + "\t"
                     line += str(tract.label) + "\t"
+                    line += str(tract.start * conv_fact) + "\t"
+                    line += str(tract.end * conv_fact) + "\t"
                     line += "\n"
                     
                     f.write(line)    
