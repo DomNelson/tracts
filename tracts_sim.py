@@ -19,7 +19,11 @@ rho = 1 # Recombination rate
 ##@@ AllAncestry = True is assumed to assign parents ie no ancestry means you
 ## are not a leaf
 GlobalStepSize = 0.01
-colordict = {0:'red', 1:'blue', 2:'green'}
+labels = ['EUR', 'NAT', 'AFR']
+colordict = {'EUR':'red', 'NAT':'blue', 'AFR':'green'}
+#colordict = {'0':'red', '1':'blue', '2':'green'}
+#colordict = {'AFR':'red', 'EUR':'blue'}#, 2:'green'}
+
 
 
 #ChromLengths = [2.865747830, 2.64751457082595, 2.23363180733515, 
@@ -32,12 +36,14 @@ colordict = {0:'red', 1:'blue', 2:'green'}
 #                0.741095623349923]
                 
 
-ChromLengths = [ 277.6846783 ,  263.4266571 ,  224.5261258 ,  212.8558223 ,
+cM_ChromLengths = [ 277.6846783 ,  263.4266571 ,  224.5261258 ,  212.8558223 ,
                 203.9634184 ,  192.9822446 ,  186.9212679 ,  170.2156421 ,
                 168.2431216 ,  179.0947462 ,  159.5132079 ,  172.8505693 ,
                 126.9025447 ,  116.3957107 ,  131.405539  ,  134.9600594 ,
                 129.2943145 ,  119.0324459 ,  107.8670432 ,  108.0521931 ,
                 61.46827149,   72.68689882]
+
+ChromLengths = [length / 100. for length in cM_ChromLengths]
 
 migfile = sys.argv[1]
 numinds = int(sys.argv[2])
@@ -55,8 +61,9 @@ indlist = []
 for i in range(numinds):
     sim_ped = ped.Pedigree(sampleind = None, 
                      DemeSwitch = DemeSwitch,
-                     MigPropMat = migmat)
-    print "Simulating individual", i, "of", numinds                     
+                     MigPropMat = migmat,
+                     labels = labels)
+#    print "Simulating individual", i, "of", numinds                     
     sim_ped.MakeGenomes(ChromLengths = ChromLengths, rho = rho, smoothed = True,
                          Gamete = False)
                          
@@ -67,10 +74,10 @@ for i in range(numinds):
     if bedpath != "None":
         if not os.path.exists(bedpath):
             os.makedirs(bedpath)
-#        outfile = os.path.join(bedpath, "IND" + str(i))
+#        outfile = os.path.join(bedpath, "IND" + str(i + 1))
 #        samp_ind.to_bed_file(outfile)
-        outfile = os.path.join(bedpath, "IND" + str(i))
-        ped.tracts_ind_to_bed(tracts_ind, outfile)
+        outfile = os.path.join(bedpath, "IND" + str(i + 1))
+        ped.tracts_ind_to_bed(tracts_ind, outfile, conv = "M->cM")
     
 pop = tracts.population(list_indivs = indlist)
 pop.plot_global_tractlengths(colordict, outfile = plotoutfile)
