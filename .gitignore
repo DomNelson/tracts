@@ -1,3 +1,3 @@
-*~
+sims/data/*
+sims/results/*
 *.pyc
-/output/
