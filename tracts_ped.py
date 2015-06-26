@@ -32,7 +32,7 @@ def weighted_choice(weights):
 ## 3) chance that the individual is a migrant (leaf of pedigree)
 
 class Pedigree:
-    def __init__(self, sampleind, DemeSwitch, MigPropMat):
+    def __init__(self, sampleind, DemeSwitch, MigPropMat, labels = None):
         if sampleind is None:
             self.sampleind = indiv()
         else:
@@ -44,6 +44,10 @@ class Pedigree:
         self.Gens = len(MigPropMat) - 1
         self.MigPropMat = MigPropMat
         self.currentgenlist = self.indlist
+        if labels is None:
+            self.labels = range(len(MigPropMat[0]))
+        else:
+            self.labels = labels
         
         for i in range(self.Gens):
             
@@ -89,19 +93,19 @@ class Pedigree:
             self.nextgenlist = []
                             
 
-    def SetAncestry_matrix(self, depth):
+    def SetAncestry_matrix(self, depth, AllAncestry = True):
         if depth > len(self.MigPropMat):
             print "Error: No migrant proportions for generation", depth
             sys.exit()
+        if depth == self.Gens and AllAncestry is True:
+            sourceindex = weighted_choice(self.MigPropMat[depth])
+            return self.labels[sourceindex]
         if np.random.random() < np.sum(self.MigPropMat[depth]):
             migindex = weighted_choice(self.MigPropMat[depth])
-            return migindex
+            return self.labels[migindex]
         else:
-            if depth == self.Gens:
-                sourceindex = weighted_choice(self.MigPropMat[depth])
-                return sourceindex
-            # else:
-            #     return None
+            return None
+            
     def expand_migmat(self, migmat):
         if len(migmat) == self.Gens:
             print "Matrix already proper size: skipping expansion"
@@ -351,9 +355,9 @@ def tracts_ind_to_bed(ind, outfile, conv = None):
         with open(newoutfile, 'w') as f:
             f.write(header)
 
-        if conv == "M_cM":
+        if conv == "M->cM":
             conv_fact = 100
-        elif conv == "cM_M":
+        elif conv == "cM->M":
             conv_fact = 0.01
         else:
             conv_fact = 1
