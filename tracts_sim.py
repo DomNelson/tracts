@@ -71,7 +71,7 @@ for i in range(numinds):
         samp_ind = sim_ped.indlist[0]
         tracts_ind = samp_ind.to_tracts_indiv()
     elif method == "PSMC":
-        P = ped.Pedigree(migmat)
+        P = ped.Pedigree(migmat, labels = labels)
         P.SortLeafNode()
         P.BuildTransMatrices()
         tracts_ind = P.PSMC_ind(ChromLengths)
@@ -90,7 +90,7 @@ pop = tracts.population(list_indivs = indlist)
 pop.plot_global_tractlengths(colordict, outfile = plotoutfile)
 
 if popoutfile != "None":
-    popoutpath = os.path.splitext(popoutfile)[0]
+    popoutpath = os.path.dirname(popoutfile)
     if not os.path.exists(popoutpath):
         os.makedirs(popoutpath)
     with open(popoutfile, 'wb') as f:
