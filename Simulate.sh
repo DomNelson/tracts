@@ -2,8 +2,9 @@ set -e
 
 MIGFILE=$1
 NUMINDS=$2
-OUTDIR=$3
-POPNAME=$4
+METHOD=$3
+OUTDIR=$4
+POPNAME=$5
 
 TIMESTAMP=$(date +%Y%m%d)_$(date +%H)_$(date +%M)_$(date +%S)
 NEWDIR=$OUTDIR$TIMESTAMP
@@ -27,4 +28,4 @@ echo $BEDOUT >> $NEWDIR/notes.txt
 echo $POPOUT >> $NEWDIR/notes.txt
 echo $PLOTOUT >> $NEWDIR/notes.txt
 
-python tracts_sim.py $MIGFILE $NUMINDS $BEDOUT $POPOUT $PLOTOUT
+python tracts_sim.py $MIGFILE $NUMINDS $METHOD $BEDOUT $POPOUT $PLOTOUT
