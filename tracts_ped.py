@@ -199,6 +199,8 @@ class Pedigree:
                 self.NtL[NtLRow][i] = 1. / 2 ** (self.leaflist[i].depth - descendant.depth - 1)
         self.SparseNtL = scipy.sparse.csr_matrix(self.NtL)
         self.TMat = np.dot(np.transpose(self.LtN), self.NtL)
+        if np.sum(self.TMat[0]) != 1:
+            print "Transition probabilities do not sum to one. Matrix may be transposed"
 
     
     def MakeGenomes(self, ChromLengths, rho, smoothed = True, Gamete = False):
@@ -271,17 +273,20 @@ class Pedigree:
         leafindex = np.random.randint(len(self.leaflist))
         leaf = self.leaflist[leafindex]
         startpnt = 0
-        endpnt = np.random.exponential(rho / ChromLengths[0])
+        endpnt = np.random.exponential(rho / ChromLengths[0] / leaf.depth)
         ## Fill in all tracts up to the last one, which is done after
         while endpnt < ChromLengths[0]:
             tractlist.append(tracts.tract(startpnt, endpnt, leaf.ancestry))
             ## Now build the next tract
             startpnt = endpnt
-            endpnt = endpnt + np.random.exponential(ChromLengths[0])
+            endpnt = endpnt + np.random.exponential(rho / ChromLengths[0] / leaf.depth)
             transprobs = self.TMat[leafindex]
             leafindex = np.random.choice(range(len(self.leaflist)), p=transprobs)
             leaf = self.leaflist[leafindex]
-
+        ## Now fill in the last tract
+        tractlist.append(tracts.tract(startpnt, ChromLengths[0], leaf.ancestry))
+        
+        return tractlist
 
 
 
@@ -452,13 +457,18 @@ def tracts_ind_to_bed(ind, outfile, conv = None):
                     f.write(line)    
 
         
-migmat = [[0,0], [0,0], [0.5,0], [0.5,0.5]]
+#migmat = [[0,0], [0,0],[0,0], [0,0], [0.5,0], [0.5,0.5]]
+migmat = [[0,0], [0.5,0.5]]
                 
 P = Pedigree(migmat)
 P.SortLeafNode()
 P.BuildTransMatrices()
 
 print P.TMat
+
+a = P.PSMC_genome([1.86])
+for tract in a:
+    print tract.start, tract.end, tract.label
                 
                 
                 
