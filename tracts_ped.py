@@ -199,8 +199,10 @@ class Pedigree:
                 self.NtL[NtLRow][i] = 1. / 2 ** (self.leaflist[i].depth - descendant.depth - 1)
         self.SparseNtL = scipy.sparse.csr_matrix(self.NtL)
         self.TMat = np.dot(np.transpose(self.LtN), self.NtL)
-        if np.sum(self.TMat[0]) != 1:
+        ##@@ Think about whether this is a safe threshold
+        if np.abs(np.sum(self.TMat[0]) - 1) > 0.0001:
             print "Transition probabilities do not sum to one. Matrix may be transposed"
+            sys.exit()
 
     
     def MakeGenomes(self, ChromLengths, rho, smoothed = True, Gamete = False):
@@ -268,26 +270,46 @@ class Pedigree:
             ## the indlist
             self.indlist = [hapind] + self.indlist
 
-    def PSMC_genome(self, ChromLengths, rho=1):
+    def PSMC_chromosome(self, chromlength, rho=1):
         tractlist = []
         leafindex = np.random.randint(len(self.leaflist))
         leaf = self.leaflist[leafindex]
         startpnt = 0
-        endpnt = np.random.exponential(rho / ChromLengths[0] / leaf.depth)
+        Lambda = rho * chromlength * leaf.depth
+        endpnt = np.random.exponential(1. / Lambda)
         ## Fill in all tracts up to the last one, which is done after
-        while endpnt < ChromLengths[0]:
+        while endpnt < chromlength:
             tractlist.append(tracts.tract(startpnt, endpnt, leaf.ancestry))
             ## Now build the next tract
             startpnt = endpnt
-            endpnt = endpnt + np.random.exponential(rho / ChromLengths[0] / leaf.depth)
+            Lambda = rho * chromlength * leaf.depth
+            endpnt = endpnt + np.random.exponential(1. / Lambda)
             transprobs = self.TMat[leafindex]
             leafindex = np.random.choice(range(len(self.leaflist)), p=transprobs)
             leaf = self.leaflist[leafindex]
-        ## Now fill in the last tract
-        tractlist.append(tracts.tract(startpnt, ChromLengths[0], leaf.ancestry))
+        ## Fill in the last tract and build chromosome
+        tractlist.append(tracts.tract(startpnt, chromlength, leaf.ancestry))
+        chrom = tracts.chrom(tracts = tractlist)
+        chrom._smooth()
         
-        return tractlist
+        return chrom
+        
+    def PSMC_chropair(self, chromlength, rho=1):
+        chroms = []
+        for i in range(2):
+            chroms.append(self.PSMC_chromosome(chromlength, rho))
+        chropair = tracts.chropair(chroms)
+        return chropair
+        
 
+    def PSMC_ind(self, chromlengths, rho=1):
+        indiv = tracts.indiv(Ls = chromlengths, label = "None")
+        chropairs = []
+        for length in chromlengths:
+            chropairs.append(self.PSMC_chropair(length, rho))
+        indiv.chroms = chropairs
+        
+        return indiv
 
 
         
@@ -457,17 +479,27 @@ def tracts_ind_to_bed(ind, outfile, conv = None):
                     f.write(line)    
 
         
-#migmat = [[0,0], [0,0],[0,0], [0,0], [0.5,0], [0.5,0.5]]
-migmat = [[0,0], [0.5,0.5]]
+migmat = [[0,0], [0,0],[0,0], [0,0], [0,0],[0,0],[0,0], [0,0],[0.5,0], [0.5,0.5]]
+#migmat = [[0,0], [0,0],[0,0],[0.5,0.5]]
+#migmat = [[0,0], [0.5,0.5]]
                 
 P = Pedigree(migmat)
 P.SortLeafNode()
 P.BuildTransMatrices()
 
-print P.TMat
+#print P.TMat
 
-a = P.PSMC_genome([1.86])
-for tract in a:
+ChromLengths = [2.865747830, 2.64751457082595, 2.23363180733515, 
+                2.15492839808593, 2.04089356863902, 1.92039918028429, 
+                1.87852676459211, 1.68003441747308, 1.78206001355185, 
+                1.81366917101923, 1.58218649890248, 1.74679023161126,
+                1.26778791112187, 1.20202583329567, 1.39297570875973, 
+                1.340377262456, 1.2849052927734, 1.17708922675517, 
+                1.07733846085975, 1.08266933913055, 0.627864782064372, 
+                0.741095623349923]
+
+a = P.PSMC_ind(ChromLengths)
+for tract in a.chroms[0].copies[0].tracts:
     print tract.start, tract.end, tract.label
                 
                 
