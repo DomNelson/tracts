@@ -6,7 +6,7 @@ Created on Wed Dec 10 15:32:35 2014
 """
 
 import numpy as np
-import scipy.sparse as sp
+import scipy.sparse
 import PIL.ImageDraw as ImageDraw, PIL.Image as Image, PIL.ImageFont as ImageFont
 import sys
 import tracts
@@ -32,7 +32,7 @@ def weighted_choice(weights):
 ## 3) chance that the individual is a migrant (leaf of pedigree)
 
 class Pedigree:
-    def __init__(self, sampleind, DemeSwitch, MigPropMat, labels = None):
+    def __init__(self, MigPropMat, sampleind=None, DemeSwitch=0, labels=None):
         if sampleind is None:
             self.sampleind = indiv()
         else:
@@ -56,9 +56,10 @@ class Pedigree:
                 if ind.ancestry is None:
                     
                     ## If not a migrant, check for deme switch - affects parents
+                    ##@@ Poorly implemented, only works for two demes
                     demecheck = np.random.random()
                     if demecheck < DemeSwitch:
-                        self.parentdeme = (ind.deme + 1) % 2
+                        ind.parentdeme = (ind.deme + 1) % 2
                     
                     ## Create mother
                     # mother_ancestry = self.SetAncestry(ind.depth + 1)
@@ -147,6 +148,58 @@ class Pedigree:
             self.leaflist[i].label = i
         for i in range(len(self.nodelist)):
             self.nodelist[i].label = i
+
+    def BuildTransMatrices(self, stepsize=1, rho = 1):
+        self.rho = rho
+        self.GlobalStepSize = stepsize
+        self.SortLeafNode()
+        ## Create 'biggest possible' matrices, even though some branches may
+        ## terminate early at recent migrants. Two rows for each possible node
+        ## (maternal and paternal side), and one for each possible leaf.
+        ##@@ Should clean up empty rows/columns, or define as sparse matrix
+        self.SparseLtN = scipy.sparse.csr_matrix((2 * len(self.nodelist), len(self.leaflist)))
+        self.SparseNtL = scipy.sparse.csr_matrix((2 * len(self.nodelist), len(self.leaflist)))
+        self.NonSelf = self.rho * self.GlobalStepSize * self.Gens
+        self.Self = 1 - self.NonSelf
+        self.LtN = np.zeros((2 * len(self.nodelist), len(self.leaflist)))
+        self.NtL = np.zeros((2 * len(self.nodelist), len(self.leaflist)))        
+        
+        for i in range(len(self.leaflist)):
+            ## Transition probability depends on leaf depth, which is also 
+            ## equal to its number of descendants
+            TransitionProb = 1. / self.leaflist[i].depth
+            for descendant in self.leaflist[i].descendants:
+                ## Check if we are coming from maternal (0) or paternal (1) 
+                ## side. Rows are determined by adding the individuals binary
+                ## position (ie 1, 0, 1 = 5) to the maximum possible number of
+                ## individuals from all previous generations.
+                if self.leaflist[i].position[descendant.depth] == 0:
+                    ##@@ Why? print "Leaflist", i, ", Descendant depth", descendant.depth
+                    LtNRow = 2 * (descendant.label)
+                elif self.leaflist[i].position[descendant.depth] == 1:
+                    LtNRow = 2 * (descendant.label) + 1
+                ##@@ Why? print 2 * (2 ** descendant.depth - 1 + descendant.PosAsBinary())
+                try:
+                    self.LtN[LtNRow][i] = TransitionProb
+                except IndexError:
+                    print "Out of bounds: Row", i, "does not exist"
+        self.SparseLtN = scipy.sparse.csr_matrix(self.LtN)
+        
+        for i in range(len(self.leaflist)):
+            for descendant in self.leaflist[i].descendants:
+                ## Check if we are coming from maternal (0) or paternal (1) 
+                ## side. Rows are determined by adding the individuals binary
+                ## position (ie 1, 0, 1 = 5) to the maximum possible number of
+                ## individuals from all previous generations. Select opposite
+                ## maternal/paternal row compared to LtN above.
+                if self.leaflist[i].position[descendant.depth] == 0:
+                    NtLRow = 2 * (descendant.label) + 1
+                elif self.leaflist[i].position[descendant.depth] == 1:
+                    NtLRow = 2 * (descendant.label)
+                self.NtL[NtLRow][i] = 1. / 2 ** (self.leaflist[i].depth - descendant.depth - 1)
+        self.SparseNtL = scipy.sparse.csr_matrix(self.NtL)
+        self.TMat = np.dot(np.transpose(self.LtN), self.NtL)
+
     
     def MakeGenomes(self, ChromLengths, rho, smoothed = True, Gamete = False):
         self.Gamete = Gamete
@@ -213,6 +266,25 @@ class Pedigree:
             ## the indlist
             self.indlist = [hapind] + self.indlist
 
+    def PSMC_genome(self, ChromLengths, rho=1):
+        tractlist = []
+        leafindex = np.random.randint(len(self.leaflist))
+        leaf = self.leaflist[leafindex]
+        startpnt = 0
+        endpnt = np.random.exponential(rho / ChromLengths[0])
+        ## Fill in all tracts up to the last one, which is done after
+        while endpnt < ChromLengths[0]:
+            tractlist.append(tracts.tract(startpnt, endpnt, leaf.ancestry))
+            ## Now build the next tract
+            startpnt = endpnt
+            endpnt = endpnt + np.random.exponential(ChromLengths[0])
+            transprobs = self.TMat[leafindex]
+            leafindex = np.random.choice(range(len(self.leaflist)), p=transprobs)
+            leaf = self.leaflist[leafindex]
+
+
+
+
         
     def PlotPedigree(self, indlabels = True, tractlabels = False, 
                      showgamete = False, outfile = None):
@@ -223,7 +295,8 @@ class Pedigree:
             if proceed != "y":
                 return
         x_range = (40 * len(self.leaflist) + 5) * self.Gens
-        if self.Gamete is True and showgamete is True:
+        # if self.Gamete is True and showgamete is True:
+        if showgamete is True:
             y_range = 300 * (self.Gens + 2)
         else:
             y_range = 300 * (self.Gens + 1)
@@ -240,29 +313,31 @@ class Pedigree:
 #            hapind = indiv(depth = -1, chromosomes = [self.gamete])
 #            plotlist = [hapind] + plotlist
         for ind in self.indlist:
-            if self.Gamete is True and showgamete is True:
+            # if self.Gamete is True and showgamete is True:
+            if showgamete is True:
                 ystart = (ind.depth + 1) * 300
             else:
                 ystart = ind.depth * 300
             for i in range(len(ind.chromosomes)):
-                for tract in ind.chromosomes[i].tracts:
-                    if tract.label ==  0:
-                        colour = 255
-                    elif tract.label == 1:
-                        colour = 170
-                    xstart = x_range / 2
-                    for j in range(len(ind.position)):
-                        if ind.position == []:
-                            xstart = x_range / 2
-                        elif ind.position[j] == 0:
-                            xstart -= x_range / (2 ** (j + 2))
-                        elif ind.position[j] == 1:
-                            xstart += x_range / (2 ** (j + 2))
-                        else:
-                            print "Invalid position"
-                    draw.rectangle(((xstart + 5 + i * 15, ystart + tract.start * 100 + 5),
-                                    (xstart + 15 + i * 15, ystart + tract.end * 100 + 5)),
-                                    fill=colour)
+                for k in range(2):
+                    for tract in ind.chromosomes[i].chroms[k].tracts:
+                        if tract.label ==  0:
+                            colour = 255
+                        elif tract.label == 1:
+                            colour = 170
+                        xstart = x_range / 2
+                        for j in range(len(ind.position)):
+                            if ind.position == []:
+                                xstart = x_range / 2
+                            elif ind.position[j] == 0:
+                                xstart -= x_range / (2 ** (j + 2))
+                            elif ind.position[j] == 1:
+                                xstart += x_range / (2 ** (j + 2))
+                            else:
+                                print "Invalid position"
+                        draw.rectangle(((xstart + 5 + i * 15, ystart + tract.start * 100 + 5),
+                                        (xstart + 15 + i * 15, ystart + tract.end * 100 + 5)),
+                                        fill=colour)
                 if indlabels is True:
                     if ind.depth >= 0:
                         draw.text((xstart - 30, ystart + 50), 
@@ -377,11 +452,13 @@ def tracts_ind_to_bed(ind, outfile, conv = None):
                     f.write(line)    
 
         
+migmat = [[0,0], [0,0], [0.5,0], [0.5,0.5]]
                 
-                
-                
-                
-                
+P = Pedigree(migmat)
+P.SortLeafNode()
+P.BuildTransMatrices()
+
+print P.TMat
                 
                 
                 
