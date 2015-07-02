@@ -46,29 +46,36 @@ cM_ChromLengths = [ 277.6846783 ,  263.4266571 ,  224.5261258 ,  212.8558223 ,
 ChromLengths = [length / 100. for length in cM_ChromLengths]
 
 migfile = sys.argv[1]
+migmat = np.genfromtxt(migfile)
 numinds = int(sys.argv[2])
-bedpath = os.path.expanduser(sys.argv[3])
+method = sys.argv[3]
+bedpath = os.path.expanduser(sys.argv[4])
 try:
-    popoutfile = os.path.expanduser(sys.argv[4])
-    plotoutfile = os.path.expanduser(sys.argv[5])
+    popoutfile = os.path.expanduser(sys.argv[5])
+    plotoutfile = os.path.expanduser(sys.argv[6])
 except IndexError:
     popoutfile = "None"
     plotoutfile = "None"
 
-migmat = np.genfromtxt(migfile)
 
 indlist = []
 for i in range(numinds):
-    sim_ped = ped.Pedigree(sampleind = None, 
-                     DemeSwitch = DemeSwitch,
-                     MigPropMat = migmat,
-                     labels = labels)
-#    print "Simulating individual", i, "of", numinds                     
-    sim_ped.MakeGenomes(ChromLengths = ChromLengths, rho = rho, smoothed = True,
-                         Gamete = False)
-                         
-    samp_ind = sim_ped.indlist[0]
-    tracts_ind = samp_ind.to_tracts_indiv()
+    print "Simulating individual", i, "of", numinds                     
+    if method == "forward":
+        sim_ped = ped.Pedigree(sampleind = None, 
+                         DemeSwitch = DemeSwitch,
+                         MigPropMat = migmat,
+                         labels = labels)
+        sim_ped.MakeGenomes(ChromLengths = ChromLengths, rho = rho, smoothed = True,
+                             Gamete = False)
+        samp_ind = sim_ped.indlist[0]
+        tracts_ind = samp_ind.to_tracts_indiv()
+    elif method == "PSMC":
+        P = ped.Pedigree(migmat)
+        P.SortLeafNode()
+        P.BuildTransMatrices()
+        tracts_ind = P.PSMC_ind(ChromLengths)
+
     indlist.append(tracts_ind)
     
     if bedpath != "None":
