@@ -75,6 +75,9 @@ for i in range(numinds):
         P.SortLeafNode()
         P.BuildTransMatrices()
         tracts_ind = P.PSMC_ind(ChromLengths)
+    else:
+        print "Unknown simulation mathod"
+        sys.exit
 
     indlist.append(tracts_ind)
     

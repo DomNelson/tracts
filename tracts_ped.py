@@ -275,14 +275,14 @@ class Pedigree:
         leafindex = np.random.randint(len(self.leaflist))
         leaf = self.leaflist[leafindex]
         startpnt = 0
-        Lambda = rho * chromlength * leaf.depth
+        Lambda = rho * chromlength * (leaf.depth - 1)
         endpnt = np.random.exponential(1. / Lambda)
         ## Fill in all tracts up to the last one, which is done after
         while endpnt < chromlength:
             tractlist.append(tracts.tract(startpnt, endpnt, leaf.ancestry))
             ## Now build the next tract
             startpnt = endpnt
-            Lambda = rho * chromlength * leaf.depth
+            Lambda = rho * chromlength * (leaf.depth - 1)
             endpnt = endpnt + np.random.exponential(1. / Lambda)
             transprobs = self.TMat[leafindex]
             leafindex = np.random.choice(range(len(self.leaflist)), p=transprobs)
