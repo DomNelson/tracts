@@ -61,17 +61,17 @@ except IndexError:
 indlist = []
 for i in range(numinds):
     print "Simulating individual", i, "of", numinds                     
+    P = ped.Pedigree(sampleind = None, 
+                     DemeSwitch = DemeSwitch,
+                     MigPropMat = migmat,
+                     labels = labels)
     if method == "forward":
-        sim_ped = ped.Pedigree(sampleind = None, 
-                         DemeSwitch = DemeSwitch,
-                         MigPropMat = migmat,
-                         labels = labels)
-        sim_ped.MakeGenomes(ChromLengths = ChromLengths, rho = rho, smoothed = True,
+        P.MakeGenomes(ChromLengths = ChromLengths, rho = rho, smoothed = True,
                              Gamete = False)
-        samp_ind = sim_ped.indlist[0]
+        samp_ind = P.indlist[0]
         tracts_ind = samp_ind.to_tracts_indiv()
     elif method == "PSMC":
-        P = ped.Pedigree(migmat, labels = labels)
+#        P = ped.Pedigree(migmat, labels = labels)
         P.SortLeafNode()
         P.BuildTransMatrices()
         tracts_ind = P.PSMC_ind(ChromLengths)
