@@ -270,23 +270,22 @@ class Pedigree:
             ## the indlist
             self.indlist = [hapind] + self.indlist
 
-    def PSMC_chromosome(self, chromlength, rho=1):
+    def PSMC_chromosome(self, chromlength, rho):
         tractlist = []
         leafindex = np.random.randint(len(self.leaflist))
         leaf = self.leaflist[leafindex]
         startpnt = 0
-        # Lambda = rho * chromlength * (leaf.depth - 1)
-        Lambda = rho * (leaf.depth - 1)
+        Lambda = (1. + rho * chromlength * (leaf.depth - 1)) / chromlength
         endpnt = np.random.exponential(1. / Lambda)
         ## Fill in all tracts up to the last one, which is done after
         while endpnt < chromlength:
             tractlist.append(tracts.tract(startpnt, endpnt, leaf.ancestry))
             ## Now build the next tract
             startpnt = endpnt
-            # Lambda = rho * chromlength * (leaf.depth - 1)
-            Lambda = rho * (leaf.depth - 1)
+            Lambda = (1. + rho * chromlength * (leaf.depth - 1)) / chromlength
             endpnt = endpnt + np.random.exponential(1. / Lambda)
             transprobs = self.TMat[leafindex]
+            ##@@ This could be sped up using weighted_choice function
             leafindex = np.random.choice(range(len(self.leaflist)), p=transprobs)
             leaf = self.leaflist[leafindex]
         ## Fill in the last tract and build chromosome
@@ -296,15 +295,15 @@ class Pedigree:
         
         return chrom
         
-    def PSMC_chropair(self, chromlength, rho=1):
+    def PSMC_chropair(self, chromlength, rho):
         chroms = []
         for i in range(2):
             chroms.append(self.PSMC_chromosome(chromlength, rho))
         chropair = tracts.chropair(chroms)
-        return chropair
         
+        return chropair        
 
-    def PSMC_ind(self, chromlengths, rho=1):
+    def PSMC_ind(self, chromlengths, rho=1.):
         indiv = tracts.indiv(Ls = chromlengths, label = "None")
         chropairs = []
         for length in chromlengths:
@@ -312,8 +311,6 @@ class Pedigree:
         indiv.chroms = chropairs
         
         return indiv
-
-
         
     def PlotPedigree(self, indlabels = True, tractlabels = False, 
                      showgamete = False, outfile = None):
