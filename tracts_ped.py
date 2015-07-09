@@ -92,6 +92,53 @@ class Pedigree:
             self.indlist += self.nextgenlist
             self.currentgenlist = self.nextgenlist
             self.nextgenlist = []
+            
+            
+    def build_ped(self, sampleind = None, gens):
+        if sampleind is None:
+            sampleind = indiv()
+        else:
+            sampleind = sampleind
+        indlist = [sampleind]
+        currentgenlist = indlist
+        
+        for i in range(self.Gens):
+            ## Create parents for most recently created generation
+            for ind in currentgenlist:
+                if ind.ancestry is None:
+                    ## If not a migrant, check for deme switch - affects parents
+                    ##@@ Poorly implemented, only works for two demes
+                    demecheck = np.random.random()
+                    if demecheck < DemeSwitch:
+                        ind.parentdeme = (ind.deme + 1) % 2
+                    ## Create mother
+                    # mother_ancestry = self.SetAncestry(ind.depth + 1)
+                    mother_ancestry = self.SetAncestry_matrix(ind.depth + 1)
+                    ind_mother = indiv(depth = ind.depth + 1, 
+                                           deme = ind.parentdeme, 
+                                           position = ind.position + [0], 
+                                           ancestry = mother_ancestry)
+                    nextgenlist.append(ind_mother)
+                    ind.parentlist.append(ind_mother)
+                    ## Create father
+                    # father_ancestry = self.SetAncestry(ind.depth + 1)
+                    father_ancestry = self.SetAncestry_matrix(ind.depth + 1)
+                    ind_father = indiv(depth = ind.depth + 1, 
+                                           deme = ind.parentdeme, 
+                                           position = ind.position + [1], 
+                                           ancestry = father_ancestry)
+                    nextgenlist.append(ind_father)
+                    ind.parentlist.append(ind_father)
+                    ##@@ Track descendents for use in transition matrices. Will
+                    ## eventually have to do this with separate function so
+                    ## it can handle arbitrary pedigrees.
+                    ind_mother.descendants += ind.descendants
+                    ind_mother.descendants.append(ind)
+                    ind_father.descendants += ind.descendants
+                    ind_father.descendants.append(ind)
+            indlist += nextgenlist
+            currentgenlist = nextgenlist
+            nextgenlist = []        
                             
 
     def SetAncestry_matrix(self, depth, AllAncestry = True):
@@ -275,14 +322,16 @@ class Pedigree:
         leafindex = np.random.randint(len(self.leaflist))
         leaf = self.leaflist[leafindex]
         startpnt = 0
-        Lambda = (1. + rho * chromlength * (leaf.depth - 1)) / chromlength
+#        Lambda = (1. + rho * chromlength * (leaf.depth - 1)) / chromlength
+        Lambda = rho * (leaf.depth - 1)
         endpnt = np.random.exponential(1. / Lambda)
         ## Fill in all tracts up to the last one, which is done after
         while endpnt < chromlength:
             tractlist.append(tracts.tract(startpnt, endpnt, leaf.ancestry))
             ## Now build the next tract
             startpnt = endpnt
-            Lambda = (1. + rho * chromlength * (leaf.depth - 1)) / chromlength
+#            Lambda = (1. + rho * chromlength * (leaf.depth - 1)) / chromlength
+            Lambda = rho * (leaf.depth - 1)
             endpnt = endpnt + np.random.exponential(1. / Lambda)
             transprobs = self.TMat[leafindex]
             ##@@ This could be sped up using weighted_choice function
