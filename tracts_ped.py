@@ -32,13 +32,15 @@ def weighted_choice(weights):
 ## 3) chance that the individual is a migrant (leaf of pedigree)
 
 class Pedigree:
-    def __init__(self, MigPropMat, sampleind=None, DemeSwitch=0, labels=None):
+    def __init__(self, MigPropMat, sampleind=None, DemeSwitch=0, labels=None,
+                    split_parents = False):
         if sampleind is None:
             self.sampleind = indiv()
         else:
             self.sampleind = sampleind
         self.indlist = [self.sampleind]
         self.nextgenlist = []
+        self.DemeSwitch = DemeSwitch
         ## Subtract one from length of migration matrix because it
         ## includes the zeroth generation, ie the sampled individual
         self.Gens = len(MigPropMat) - 1
@@ -48,97 +50,86 @@ class Pedigree:
             self.labels = range(len(MigPropMat[0]))
         else:
             self.labels = labels
+            
+        self.sampleind.ancestry = self.SetAncestry_matrix(0)
+        if self.sampleind.ancestry is not None:
+            print "The proband is an ancestor"
+            sys.exit()
         
-        for i in range(self.Gens):
+        ## If true, we build separate pedigrees on the maternal and paternal
+        ## sides.
+        if split_parents is True:
+            print "Building separate maternal/paternal pedigrees"
+            sampleparents = self.set_parents(self.sampleind)
+            ## Remove descendants of parents so they become the root of their
+            ## respective pedigrees.
+            for parent in sampleparents:
+                parent.descendants = []
+                parent.position = []
+            ## We set the individual and their parents, so the remaining pedigrees
+            ## are 2 generations shorter than the migration matrix
+            self.mother_indlist = self.build_ped(len(self.MigPropMat) - 2,
+                                                 sampleind = sampleparents[0])
+            self.father_indlist = self.build_ped(len(self.MigPropMat) - 2,
+                                                 sampleind = sampleparents[1])
+            self.indlist = [self.sampleind] + self.mother_indlist + self.father_indlist
+            ## Now adjsut the depth of all individuals to account for split
+            for ind in self.indlist:
+                ind.depth -= 1
+
+        else:                                             
+            self.indlist = self.build_ped(len(self.MigPropMat) - 1,
+                                            sampleind = self.sampleind)
+        
+        
+    def set_parents(self, ind):
+        ## If not a migrant, check for deme switch - affects parents
+        ##@@ Poorly implemented, only works for two demes
+        demecheck = np.random.random()
+        if demecheck < self.DemeSwitch:
+            ind.parentdeme = (ind.deme + 1) % 2
+        ## Create mother
+        mother_ancestry = self.SetAncestry_matrix(ind.depth + 1)
+        ind_mother = indiv(depth = ind.depth + 1, 
+                               deme = ind.parentdeme, 
+                               position = ind.position + [0], 
+                               ancestry = mother_ancestry)
+        ind.parentlist.append(ind_mother)
+        ## Create father
+        father_ancestry = self.SetAncestry_matrix(ind.depth + 1)
+        ind_father = indiv(depth = ind.depth + 1, 
+                               deme = ind.parentdeme, 
+                               position = ind.position + [1], 
+                               ancestry = father_ancestry)
+        ind.parentlist.append(ind_father)
+        ##@@ Track descendents for use in transition matrices. Will
+        ## eventually have to do this with separate function so
+        ## it can handle arbitrary pedigrees.
+        ind_mother.descendants += ind.descendants
+        ind_mother.descendants.append(ind)
+        ind_father.descendants += ind.descendants
+        ind_father.descendants.append(ind)
+        
+        return [ind_mother, ind_father]
+
             
-            ## Create parents for most recently created generation
-            for ind in self.currentgenlist:
-                if ind.ancestry is None:
-                    
-                    ## If not a migrant, check for deme switch - affects parents
-                    ##@@ Poorly implemented, only works for two demes
-                    demecheck = np.random.random()
-                    if demecheck < DemeSwitch:
-                        ind.parentdeme = (ind.deme + 1) % 2
-                    
-                    ## Create mother
-                    # mother_ancestry = self.SetAncestry(ind.depth + 1)
-                    mother_ancestry = self.SetAncestry_matrix(ind.depth + 1)
-                    ind_mother = indiv(depth = ind.depth + 1, 
-                                           deme = ind.parentdeme, 
-                                           position = ind.position + [0], 
-                                           ancestry = mother_ancestry)
-                    self.nextgenlist.append(ind_mother)
-                    ind.parentlist.append(ind_mother)
-                    
-                    ## Create father
-                    # father_ancestry = self.SetAncestry(ind.depth + 1)
-                    father_ancestry = self.SetAncestry_matrix(ind.depth + 1)
-                    ind_father = indiv(depth = ind.depth + 1, 
-                                           deme = ind.parentdeme, 
-                                           position = ind.position + [1], 
-                                           ancestry = father_ancestry)
-                    self.nextgenlist.append(ind_father)
-                    ind.parentlist.append(ind_father)
-                    
-                    ##@@ Track descendents for use in transition matrices. Will
-                    ## eventually have to do this with separate function so
-                    ## it can handle arbitrary pedigrees.
-                    ind_mother.descendants += ind.descendants
-                    ind_mother.descendants.append(ind)
-                    ind_father.descendants += ind.descendants
-                    ind_father.descendants.append(ind)
-                    
-            self.indlist += self.nextgenlist
-            self.currentgenlist = self.nextgenlist
-            self.nextgenlist = []
-            
-            
-    def build_ped(self, sampleind = None, gens):
+    def build_ped(self, gens, depth = 0, sampleind = None, DemeSwitch = 0.1):
         if sampleind is None:
-            sampleind = indiv()
+            sampleind = indiv(depth = depth)
         else:
             sampleind = sampleind
         indlist = [sampleind]
         currentgenlist = indlist
-        
-        for i in range(self.Gens):
+        nextgenlist = []
+        for i in range(gens):
             ## Create parents for most recently created generation
             for ind in currentgenlist:
                 if ind.ancestry is None:
-                    ## If not a migrant, check for deme switch - affects parents
-                    ##@@ Poorly implemented, only works for two demes
-                    demecheck = np.random.random()
-                    if demecheck < DemeSwitch:
-                        ind.parentdeme = (ind.deme + 1) % 2
-                    ## Create mother
-                    # mother_ancestry = self.SetAncestry(ind.depth + 1)
-                    mother_ancestry = self.SetAncestry_matrix(ind.depth + 1)
-                    ind_mother = indiv(depth = ind.depth + 1, 
-                                           deme = ind.parentdeme, 
-                                           position = ind.position + [0], 
-                                           ancestry = mother_ancestry)
-                    nextgenlist.append(ind_mother)
-                    ind.parentlist.append(ind_mother)
-                    ## Create father
-                    # father_ancestry = self.SetAncestry(ind.depth + 1)
-                    father_ancestry = self.SetAncestry_matrix(ind.depth + 1)
-                    ind_father = indiv(depth = ind.depth + 1, 
-                                           deme = ind.parentdeme, 
-                                           position = ind.position + [1], 
-                                           ancestry = father_ancestry)
-                    nextgenlist.append(ind_father)
-                    ind.parentlist.append(ind_father)
-                    ##@@ Track descendents for use in transition matrices. Will
-                    ## eventually have to do this with separate function so
-                    ## it can handle arbitrary pedigrees.
-                    ind_mother.descendants += ind.descendants
-                    ind_mother.descendants.append(ind)
-                    ind_father.descendants += ind.descendants
-                    ind_father.descendants.append(ind)
+                    nextgenlist.extend(self.set_parents(ind))
             indlist += nextgenlist
             currentgenlist = nextgenlist
-            nextgenlist = []        
+            nextgenlist = []
+        return indlist
                             
 
     def SetAncestry_matrix(self, depth, AllAncestry = True):
@@ -169,7 +160,7 @@ class Pedigree:
                 new_migmat[row[0] - 1].extend(row[1:])
             except IndexError:
                 print "Migration in generation beyond pedigree"
-                sys.exit
+                sys.exit()
             numancs = len(row) - 1
         for row in new_migmat:
             if len(row) == 0:
@@ -179,82 +170,90 @@ class Pedigree:
             
 
     ## Sorts individuals into lists of leaves and nodes
-    def SortLeafNode(self):
-        self.leaflist = []
-        self.nodelist = []
+    def SortLeafNode(self, indlist):
+        leaflist = []
+        nodelist = []
         
         ## Individuals are leaves if they are from the oldest generation, or 
         ## if they are a migrant from an earlier generation
-        for ind in self.indlist:
+        for ind in indlist:
+            ##@@ Does depth check still work for sub-pedigrees?
             if ind.ancestry != None or ind.depth == self.Gens:
-                self.leaflist.append(ind)
+                leaflist.append(ind)
             else:
-                self.nodelist.append(ind)
+                nodelist.append(ind)
         
-        for i in range(len(self.leaflist)):
-            self.leaflist[i].label = i
-        for i in range(len(self.nodelist)):
-            self.nodelist[i].label = i
+        for i in range(len(leaflist)):
+            leaflist[i].label = i
+        for i in range(len(nodelist)):
+            nodelist[i].label = i
 
-    def BuildTransMatrices(self, stepsize=1, rho = 1):
-        self.rho = rho
-        self.GlobalStepSize = stepsize
-        self.SortLeafNode()
+        return leaflist, nodelist
+
+    def BuildTransMatrices(self, leaflist, nodelist, rho = 1):
         ## Create 'biggest possible' matrices, even though some branches may
         ## terminate early at recent migrants. Two rows for each possible node
         ## (maternal and paternal side), and one for each possible leaf.
         ##@@ Should clean up empty rows/columns, or define as sparse matrix
-        self.SparseLtN = scipy.sparse.csr_matrix((2 * len(self.nodelist), len(self.leaflist)))
-        self.SparseNtL = scipy.sparse.csr_matrix((2 * len(self.nodelist), len(self.leaflist)))
-        self.NonSelf = self.rho * self.GlobalStepSize * self.Gens
-        self.Self = 1 - self.NonSelf
-        self.LtN = np.zeros((2 * len(self.nodelist), len(self.leaflist)))
-        self.NtL = np.zeros((2 * len(self.nodelist), len(self.leaflist)))        
+        ##@@ Use sparse matrices properly for performance improvements
+        self.SparseLtN = scipy.sparse.csr_matrix((2 * len(nodelist), len(leaflist)))
+        self.SparseNtL = scipy.sparse.csr_matrix((2 * len(nodelist), len(leaflist)))
+        LtN = np.zeros((2 * len(nodelist), len(leaflist)))
+        NtL = np.zeros((2 * len(nodelist), len(leaflist)))        
         
-        for i in range(len(self.leaflist)):
+        for i in range(len(leaflist)):
             ## Transition probability depends on leaf depth, which is also 
             ## equal to its number of descendants
-            TransitionProb = 1. / self.leaflist[i].depth
-            for descendant in self.leaflist[i].descendants:
+            TransitionProb = 1. / leaflist[i].depth
+            for descendant in leaflist[i].descendants:
                 ## Check if we are coming from maternal (0) or paternal (1) 
                 ## side. Rows are determined by adding the individuals binary
                 ## position (ie 1, 0, 1 = 5) to the maximum possible number of
                 ## individuals from all previous generations.
-                if self.leaflist[i].position[descendant.depth] == 0:
+                if leaflist[i].position[descendant.depth] == 0:
                     ##@@ Why? print "Leaflist", i, ", Descendant depth", descendant.depth
                     LtNRow = 2 * (descendant.label)
-                elif self.leaflist[i].position[descendant.depth] == 1:
+                elif leaflist[i].position[descendant.depth] == 1:
                     LtNRow = 2 * (descendant.label) + 1
                 ##@@ Why? print 2 * (2 ** descendant.depth - 1 + descendant.PosAsBinary())
                 try:
-                    self.LtN[LtNRow][i] = TransitionProb
+                    LtN[LtNRow][i] = TransitionProb
                 except IndexError:
                     print "Out of bounds: Row", i, "does not exist"
-        self.SparseLtN = scipy.sparse.csr_matrix(self.LtN)
+        self.SparseLtN = scipy.sparse.csr_matrix(LtN)
         
-        for i in range(len(self.leaflist)):
-            for descendant in self.leaflist[i].descendants:
+        for i in range(len(leaflist)):
+            for descendant in leaflist[i].descendants:
                 ## Check if we are coming from maternal (0) or paternal (1) 
                 ## side. Rows are determined by adding the individuals binary
                 ## position (ie 1, 0, 1 = 5) to the maximum possible number of
                 ## individuals from all previous generations. Select opposite
                 ## maternal/paternal row compared to LtN above.
-                if self.leaflist[i].position[descendant.depth] == 0:
+                ##@@ This could be made more robust
+                if leaflist[i].position[descendant.depth] == 0:
                     NtLRow = 2 * (descendant.label) + 1
-                elif self.leaflist[i].position[descendant.depth] == 1:
+                elif leaflist[i].position[descendant.depth] == 1:
                     NtLRow = 2 * (descendant.label)
-                self.NtL[NtLRow][i] = 1. / 2 ** (self.leaflist[i].depth - descendant.depth - 1)
-        self.SparseNtL = scipy.sparse.csr_matrix(self.NtL)
-        self.TMat = np.dot(np.transpose(self.LtN), self.NtL)
+                NtL[NtLRow][i] = 1. / 2 ** (leaflist[i].depth - descendant.depth - 1)
+        self.SparseNtL = scipy.sparse.csr_matrix(NtL)
+        TMat = np.dot(np.transpose(LtN), NtL)
         ##@@ Think about whether this is a safe threshold
-        if np.abs(np.sum(self.TMat[0]) - 1) > 0.0001:
+        if np.abs(np.sum(TMat[0]) - 1) > 1e-6:
             print "Transition probabilities do not sum to one. Matrix may be transposed"
+            print TMat
+            print LtN
+            print NtL
             sys.exit()
 
+        return TMat, LtN, NtL
+
+    # def build_tmat(self):
+    #     for ind in self.indlist:
+
+
     
-    def MakeGenomes(self, ChromLengths, rho, smoothed = True, Gamete = False):
+    def MakeGenomes(self, TMat, ChromLengths, smoothed = True, Gamete = False):
         self.Gamete = Gamete
-        self.rho = rho
         ##@@ Make sure new chromosomes plot correctly
         for ind in self.indlist:
             if ind.ancestry is not None:
@@ -317,13 +316,13 @@ class Pedigree:
             ## the indlist
             self.indlist = [hapind] + self.indlist
 
-    def PSMC_chromosome(self, chromlength, rho):
+    def PSMC_chromosome(self, TMat, leaflist, chromlength, rho):
         tractlist = []
-        leafindex = np.random.randint(len(self.leaflist))
-        leaf = self.leaflist[leafindex]
+        leafindex = np.random.randint(len(leaflist))
+        leaf = leaflist[leafindex]
         startpnt = 0
 #        Lambda = (1. + rho * chromlength * (leaf.depth - 1)) / chromlength
-        Lambda = rho * (leaf.depth - 1)
+        Lambda = rho * (leaf.depth)
         endpnt = np.random.exponential(1. / Lambda)
         ## Fill in all tracts up to the last one, which is done after
         while endpnt < chromlength:
@@ -331,12 +330,12 @@ class Pedigree:
             ## Now build the next tract
             startpnt = endpnt
 #            Lambda = (1. + rho * chromlength * (leaf.depth - 1)) / chromlength
-            Lambda = rho * (leaf.depth - 1)
+            Lambda = rho * (leaf.depth)
             endpnt = endpnt + np.random.exponential(1. / Lambda)
-            transprobs = self.TMat[leafindex]
+            transprobs = TMat[leafindex]
             ##@@ This could be sped up using weighted_choice function
-            leafindex = np.random.choice(range(len(self.leaflist)), p=transprobs)
-            leaf = self.leaflist[leafindex]
+            leafindex = np.random.choice(range(len(leaflist)), p=transprobs)
+            leaf = leaflist[leafindex]
         ## Fill in the last tract and build chromosome
         tractlist.append(tracts.tract(startpnt, chromlength, leaf.ancestry))
         chrom = tracts.chrom(tracts = tractlist)
@@ -344,19 +343,22 @@ class Pedigree:
         
         return chrom
         
-    def PSMC_chropair(self, chromlength, rho):
+    def PSMC_chropair(self, TMat, leaflist, chromlength, rho):
         chroms = []
         for i in range(2):
-            chroms.append(self.PSMC_chromosome(chromlength, rho))
+            chroms.append(self.PSMC_chromosome(chromlength, TMat, leaflist, rho))
         chropair = tracts.chropair(chroms)
         
         return chropair        
 
-    def PSMC_ind(self, chromlengths, rho=1.):
+    def PSMC_ind(self, M_TMat, F_TMat, M_leaflist, F_leaflist, 
+                chromlengths, rho=1.):
         indiv = tracts.indiv(Ls = chromlengths, label = "None")
         chropairs = []
         for length in chromlengths:
-            chropairs.append(self.PSMC_chropair(length, rho))
+            mother_chrom = self.PSMC_chromosome(M_TMat, M_leaflist, length, rho)
+            father_chrom = self.PSMC_chromosome(F_TMat, F_leaflist, length, rho)
+            chropairs.append(tracts.chropair([mother_chrom, father_chrom]))
         indiv.chroms = chropairs
         
         return indiv
