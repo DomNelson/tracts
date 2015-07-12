@@ -18,7 +18,6 @@ DemeSwitch = 0.1 # Chance of child leaving deme of parents
 rho = 1 # Recombination rate
 ##@@ AllAncestry = True is assumed to assign parents ie no ancestry means you
 ## are not a leaf
-GlobalStepSize = 0.01
 labels = ['EUR', 'NAT', 'AFR']
 colordict = {'EUR':'red', 'NAT':'blue', 'AFR':'green'}
 #colordict = {'0':'red', '1':'blue', '2':'green'}
@@ -61,16 +60,24 @@ except IndexError:
 indlist = []
 for i in range(numinds):
     print "Simulating individual", i, "of", numinds                     
-    P = ped.Pedigree(sampleind = None, 
-                     DemeSwitch = DemeSwitch,
-                     MigPropMat = migmat,
-                     labels = labels)
     if method == "forward":
+        P = ped.Pedigree(sampleind = None, 
+                 DemeSwitch = DemeSwitch,
+                 MigPropMat = migmat,
+                 labels = labels
+                 split_parents = False)
         P.MakeGenomes(ChromLengths = ChromLengths, rho = rho, smoothed = True,
                              Gamete = False)
         samp_ind = P.indlist[0]
         tracts_ind = samp_ind.to_tracts_indiv()
+    ## We split the pedigree into maternal/paternal sides when simulating with
+    ## PSMC
     elif method == "PSMC":
+        P = ped.Pedigree(sampleind = None, 
+                 DemeSwitch = DemeSwitch,
+                 MigPropMat = migmat,
+                 labels = labels
+                 split_parents = True)
 #        P = ped.Pedigree(migmat, labels = labels)
         P.SortLeafNode()
         P.BuildTransMatrices()
