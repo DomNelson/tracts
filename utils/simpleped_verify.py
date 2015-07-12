@@ -25,43 +25,62 @@ ChromLengths = [length / 100. for length in cM_ChromLengths]
 migmat = [[0,0],[0,0],[0.75, 0.25]]
 #migmat = [[0,0],[0.75, 0.25]]
 
-P = ped.Pedigree(migmat)
-P.SortLeafNode()
-P.BuildTransMatrices()
+P = ped.Pedigree(migmat, split_parents=True)
+leaflist = P.SortLeafNode(P.indlist)[0]
 
 ## If this sum is one we know that there is only one leaf with ancestry 1
-while np.sum([leaf.ancestry for leaf in P.leaflist]) != 1:
-    P = ped.Pedigree(migmat)
-    P.SortLeafNode()
-    P.BuildTransMatrices()
+while np.sum([leaf.ancestry for leaf in leaflist]) != 1:
+    P = ped.Pedigree(migmat, split_parents=True)
+    leaflist = P.SortLeafNode(P.indlist)[0]
+
+M_leaflist, M_nodelist = P.SortLeafNode(P.mother_indlist)
+F_leaflist, F_nodelist = P.SortLeafNode(P.father_indlist)
+M_TMat = P.BuildTransMatrices(M_leaflist, M_nodelist)[0]
+F_TMat = P.BuildTransMatrices(F_leaflist, F_nodelist)[0]
     
 #print P.TMat
 #for leaf in P.leaflist:
 #    print leaf.ancestry
-bedpath = os.path.expanduser('~/project/tracts/sims/results/PSMC/simple')
+# bedpath = os.path.expanduser('~/project/tracts/sims/results/PSMC/simple')
+outpath = os.path.expanduser(sys.argv[1])
+bedpath = outpath + 'BED/'
+if not os.path.exists(bedpath):
+    os.makedirs(bedpath)
+
 
 PSMCinds = []
 for i in range(1000):
     print "PSMC", i
-    PSMCind = P.PSMC_ind(ChromLengths)
+    PSMCind = P.PSMC_ind(M_TMat, F_TMat, M_leaflist, F_leaflist, ChromLengths)
     PSMCinds.append(PSMCind)
     outfile = os.path.join(bedpath, "PSMC_IND" + str(i + 1))
     ped.tracts_ind_to_bed(PSMCind, outfile, conv = "M->cM")
     
-plotoutfile = os.path.expanduser('~/project/tracts/sims/results/PSMC/simple/PSMC0001.png')
+# plotoutfile = os.path.expanduser('~/project/tracts/sims/results/PSMC/simple/PSMC0001.png')
+# plotoutpath = os.path.expanduser(sys.argv[2])
 pop = tracts.population(list_indivs = PSMCinds)
-pop.plot_global_tractlengths(colordict, outfile = plotoutfile)
+pop.plot_global_tractlengths(colordict, outfile = outpath + "PSMC0001.png")
 
-#forwardinds = []
-#for i in range(1000):
-#    print "Forward", i
-#    P.MakeGenomes(ChromLengths = ChromLengths, rho = 1, smoothed = True,
-#                             Gamete = False)
-#    forwardind = P.indlist[0].to_tracts_indiv()
-#    forwardinds.append(forwardind)
-#    outfile = os.path.join(bedpath, "forward_IND" + str(i + 1))
-#    ped.tracts_ind_to_bed(forwardind, outfile, conv = "M->cM")
-#    
-#plotoutfile = os.path.expanduser('~/project/tracts/sims/results/PSMC/simple/forward0001.png')
-#pop = tracts.population(list_indivs = forwardinds)
-#pop.plot_global_tractlengths(colordict, outfile = plotoutfile)
+P = ped.Pedigree(migmat, split_parents=False)
+leaflist, nodelist = P.SortLeafNode(P.indlist)
+
+## If this sum is one we know that there is only one leaf with ancestry 1
+while np.sum([leaf.ancestry for leaf in leaflist]) != 1:
+    P = ped.Pedigree(migmat, split_parents=False)
+    leaflist, nodelist = P.SortLeafNode(P.indlist)
+
+TMat = P.BuildTransMatrices(leaflist, nodelist)
+
+forwardinds = []
+for i in range(1000):
+   print "Forward", i
+   P.MakeGenomes(TMat, ChromLengths = ChromLengths, smoothed = True,
+                            Gamete = False)
+   forwardind = P.indlist[0].to_tracts_indiv()
+   forwardinds.append(forwardind)
+   outfile = os.path.join(bedpath, "forward_IND" + str(i + 1))
+   ped.tracts_ind_to_bed(forwardind, outfile, conv = "M->cM")
+   
+# plotoutfile = os.path.expanduser('~/project/tracts/sims/results/PSMC/simple/forward0001.png')
+pop = tracts.population(list_indivs = forwardinds)
+pop.plot_global_tractlengths(colordict, outfile = outpath + 'forward0001.png')
