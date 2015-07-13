@@ -79,9 +79,15 @@ for i in range(numinds):
                  labels = labels,
                  split_parents = True)
 #        P = ped.Pedigree(migmat, labels = labels)
-        P.SortLeafNode()
-        P.BuildTransMatrices()
-        tracts_ind = P.PSMC_ind(ChromLengths)
+#        P.SortLeafNode()
+        M_leaflist, M_nodelist = P.SortLeafNode(P.mother_indlist)
+        F_leaflist, F_nodelist = P.SortLeafNode(P.father_indlist)
+        M_TMat = P.BuildTransMatrices(M_leaflist, M_nodelist)[0]
+        F_TMat = P.BuildTransMatrices(F_leaflist, F_nodelist)[0]
+        
+#        P.BuildTransMatrices()
+#        tracts_ind = P.PSMC_ind(ChromLengths)
+        tracts_ind = P.PSMC_ind(M_TMat, F_TMat, M_leaflist, F_leaflist, ChromLengths)
     else:
         print "Unknown simulation mathod"
         sys.exit
