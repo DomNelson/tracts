@@ -66,7 +66,9 @@ for i in range(numinds):
                  MigPropMat = migmat,
                  labels = labels,
                  split_parents = False)
-        P.MakeGenomes(ChromLengths = ChromLengths, rho = rho, smoothed = True,
+        leaflist, nodelist = P.SortLeafNode(P.indlist)
+        TMat = P.BuildTransMatrices(leaflist, nodelist)
+        P.MakeGenomes(TMat, ChromLengths = ChromLengths, smoothed = True,
                              Gamete = False)
         samp_ind = P.indlist[0]
         tracts_ind = samp_ind.to_tracts_indiv()
