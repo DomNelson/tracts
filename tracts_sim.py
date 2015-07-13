@@ -64,7 +64,7 @@ for i in range(numinds):
         P = ped.Pedigree(sampleind = None, 
                  DemeSwitch = DemeSwitch,
                  MigPropMat = migmat,
-                 labels = labels
+                 labels = labels,
                  split_parents = False)
         P.MakeGenomes(ChromLengths = ChromLengths, rho = rho, smoothed = True,
                              Gamete = False)
@@ -76,7 +76,7 @@ for i in range(numinds):
         P = ped.Pedigree(sampleind = None, 
                  DemeSwitch = DemeSwitch,
                  MigPropMat = migmat,
-                 labels = labels
+                 labels = labels,
                  split_parents = True)
 #        P = ped.Pedigree(migmat, labels = labels)
         P.SortLeafNode()
