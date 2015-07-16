@@ -226,7 +226,7 @@ class Pedigree:
         ## Add parents and descendants to individuals
         for ind in indlist:
             desc_list = [ped_to_tracts_dict[desc] for desc in desc_dict[ind]]
-            parent_list = [ped_to_tracts_dict[par] for par in desc_dict[ind]]
+            parent_list = [ped_to_tracts_dict[par] for par in parent_dict[ind]]
             ped_to_tracts_dict[ind].descendants = desc_list
             ped_to_tracts_dict[ind].parentlist = parent_list
 
@@ -237,17 +237,13 @@ class Pedigree:
 
     def build_descendants_dict(self, inds):
         desc_dict = {}
-        parent_dict = {}
+        parent_dict = defaultdict(list)
         for ind in inds:
-            ##@@ This check may not be necessary, as leaves shouldn't need
-            ## a parentlist
-            if self.mothers[self.ind_dict[ind]] == 0:
-                parent_dict[ind] = []
             ## Build list of descendants recursively
-            if ind in self.offspring_dict:
+            if ind in self.offspring_dict and ind != '0':
                 desc = self.offspring_dict[ind][0]
                 desc_dict[ind] = [desc]
-                parent_dict[desc] = [ind]
+                parent_dict[desc].append(ind)
             else:
                 desc_dict[ind] = []
                 continue
@@ -255,10 +251,11 @@ class Pedigree:
                 try:
                     newdesc = self.offspring_dict[desc][0]
                     desc_dict[ind].append(newdesc)
-                    parent_dict[desc].append(ind)
                     desc = newdesc
                 except KeyError:
                     break
+                
+#        print parent_dict
         return desc_dict, parent_dict
 
         
@@ -409,7 +406,7 @@ class Pedigree:
                 ## position (ie 1, 0, 1 = 5) to the maximum possible number of
                 ## individuals from all previous generations. Select opposite
                 ## maternal/paternal row compared to LtN above.
-                ##@@ This could be made more robust
+                ##@@ This could be made more robust, ie not depend on labels
                 if leaflist[i].position[descendant.depth] == 0:
                     NtLRow = 2 * (descendant.label) + 1
                 elif leaflist[i].position[descendant.depth] == 1:
@@ -428,7 +425,7 @@ class Pedigree:
         return TMat
 
     
-    def MakeGenomes(self, TMat, ChromLengths, smoothed = True, Gamete = False):
+    def MakeGenomes(self, ChromLengths, smoothed = True, Gamete = False):
         self.Gamete = Gamete
         ##@@ Make sure new chromosomes plot correctly
         for ind in self.indlist:
@@ -455,6 +452,7 @@ class Pedigree:
                             mom_chroms = ind.parentlist[0].chromosomes[k]
                             chrom0 = mom_chroms.recombine()
                             chrom0._smooth()
+#                            print "Mom chrom tracts:", [a.label for a in chrom0.tracts]
                             
                             # f0 = ind.parentlist[1].chromosomes['M' + str(k)]
                             # f1 = ind.parentlist[1].chromosomes['F' + str(k)]
@@ -462,6 +460,7 @@ class Pedigree:
                             dad_chroms = ind.parentlist[1].chromosomes[k]
                             chrom1 = dad_chroms.recombine()
                             chrom1._smooth()
+#                            print "Dad chrom tracts:", [a.label for a in chrom1.tracts]
                             
                             ind.chromosomes[k] = tracts.chropair([chrom0, chrom1])
                             # ind.chromosomes['M' + str(k)] = chrom0
@@ -469,8 +468,6 @@ class Pedigree:
                         except KeyError:
                             print "Chromosome not found: depth", self.Gens - i
                             print ind
-                            print ind.depth
-                            print ind.label
                             sys.exit()
 
         for ind in self.indlist:
