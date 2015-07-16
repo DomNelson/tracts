@@ -84,10 +84,17 @@ for i in range(numinds):
                  labels = labels,
                  split_parents = False)
         leaflist, nodelist = P.SortLeafNode(P.indlist)
-        TMat = P.BuildTransMatrices(leaflist, nodelist)
-        P.MakeGenomes(TMat, ChromLengths = ChromLengths, smoothed = True,
+#        TMat = P.BuildTransMatrices(leaflist, nodelist)
+        P.MakeGenomes(ChromLengths = ChromLengths, smoothed = True,
                              Gamete = False)
-        samp_ind = P.indlist[0]
+        ##@@ This could be slow in a large pedigree
+        samp_ind = [ind for ind in P.indlist if ind.depth == 0]
+        if len(samp_ind) == 1:
+            samp_ind = samp_ind[0]
+        else:
+            print "Depth error: mutiple roots to the pedigree"
+            print samp_ind
+            sys.exit()
         tracts_ind = samp_ind.to_tracts_indiv()
     ## We split the pedigree into maternal/paternal sides when simulating with
     ## PSMC
