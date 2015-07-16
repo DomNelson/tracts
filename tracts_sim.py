@@ -4,7 +4,7 @@ Created on Wed Jan 28 14:33:24 2015
 
 @author: dominic
 """
-import matplotlib.pylab as pylab
+#import matplotlib.pylab as pylab
 import numpy as np
 import tracts_ped as ped
 import os
@@ -19,9 +19,9 @@ rho = 1 # Recombination rate
 ##@@ AllAncestry = True is assumed to assign parents ie no ancestry means you
 ## are not a leaf
 labels = ['EUR', 'NAT', 'AFR']
-colordict = {'EUR':'red', 'NAT':'blue', 'AFR':'green'}
+#colordict = {'EUR':'red', 'NAT':'blue', 'AFR':'green'}
 #colordict = {'EUR':'yellow', 'NAT':'green'}
-#colordict = {'0':'red', '1':'blue', '2':'green'}
+colordict = {0:'red', 1:'blue', 2:'green'}
 #colordict = {'AFR':'red', 'EUR':'blue'}#, 2:'green'}
 
 
@@ -46,10 +46,19 @@ cM_ChromLengths = [ 277.6846783 ,  263.4266571 ,  224.5261258 ,  212.8558223 ,
 ChromLengths = [length / 100. for length in cM_ChromLengths]
 
 migfile = sys.argv[1]
-migmat = np.genfromtxt(migfile)
-numinds = int(sys.argv[2])
-method = sys.argv[3]
-outdir = os.path.expanduser(sys.argv[4])
+if migfile != "None":
+    migmat = np.genfromtxt(migfile)
+else:
+    migmat = None
+pedfile = sys.argv[2]
+if pedfile == "None":
+    pedfile = None
+ancfile = sys.argv[3]
+if ancfile == "None":
+    ancfile = None
+numinds = int(sys.argv[4])
+method = sys.argv[5]
+outdir = os.path.expanduser(sys.argv[6])
 if not os.path.exists(outdir):
     print "Output path does not exist"
     sys.exit()
@@ -57,8 +66,8 @@ bed_dir = os.path.join(outdir + 'BED/')
 if not os.path.exists(bed_dir):
     os.makedirs(bed_dir)
 try:
-    popoutfile = os.path.join(outdir, sys.argv[5])
-    plotoutfile = os.path.join(outdir, sys.argv[6])
+    popoutfile = sys.argv[7]
+    plotoutfile = sys.argv[8]
 except IndexError:
     popoutfile = "None"
     plotoutfile = "None"
@@ -70,6 +79,8 @@ for i in range(numinds):
         P = ped.Pedigree(sampleind = None, 
                  DemeSwitch = DemeSwitch,
                  MigPropMat = migmat,
+                 pedfile = pedfile,
+                 ancfile = ancfile,
                  labels = labels,
                  split_parents = False)
         leaflist, nodelist = P.SortLeafNode(P.indlist)
@@ -84,16 +95,18 @@ for i in range(numinds):
         P = ped.Pedigree(sampleind = None, 
                  DemeSwitch = DemeSwitch,
                  MigPropMat = migmat,
+                 pedfile = pedfile,
+                 ancfile = ancfile,
                  labels = labels,
                  split_parents = True)
         M_leaflist, M_nodelist = P.SortLeafNode(P.mother_indlist)
         F_leaflist, F_nodelist = P.SortLeafNode(P.father_indlist)
-        M_TMat = P.BuildTransMatrices(M_leaflist, M_nodelist)[0]
-        F_TMat = P.BuildTransMatrices(F_leaflist, F_nodelist)[0]
+        M_TMat = P.BuildTransMatrices(M_leaflist, M_nodelist)
+        F_TMat = P.BuildTransMatrices(F_leaflist, F_nodelist)
         
         tracts_ind = P.PSMC_ind(M_TMat, F_TMat, M_leaflist, F_leaflist, ChromLengths)
     else:
-        print "Unknown simulation mathod"
+        print "Unknown simulation method"
         sys.exit
     ## Save simulated individual to list
     indlist.append(tracts_ind)
@@ -104,10 +117,13 @@ for i in range(numinds):
 
 ## Plot tracts distribution for simulated population
 pop = tracts.population(list_indivs = indlist)
-pop.plot_global_tractlengths(colordict, outfile = plotoutfile)
+if plotoutfile != "None":
+    plotoutfile = os.path.join(outdir, plotoutfile)
+    pop.plot_global_tractlengths(colordict, outfile = plotoutfile)
 
 ## Option to write population instance to file
 if popoutfile != "None":
+    os.path.join(outdir, popoutfile)
     popoutpath = os.path.dirname(popoutfile)
     if not os.path.exists(popoutpath):
         os.makedirs(popoutpath)
