@@ -20,6 +20,7 @@ rho = 1 # Recombination rate
 ## are not a leaf
 labels = ['EUR', 'NAT', 'AFR']
 colordict = {'EUR':'red', 'NAT':'blue', 'AFR':'green'}
+#colordict = {'EUR':'yellow', 'NAT':'green'}
 #colordict = {'0':'red', '1':'blue', '2':'green'}
 #colordict = {'AFR':'red', 'EUR':'blue'}#, 2:'green'}
 
@@ -48,14 +49,19 @@ migfile = sys.argv[1]
 migmat = np.genfromtxt(migfile)
 numinds = int(sys.argv[2])
 method = sys.argv[3]
-bedpath = os.path.expanduser(sys.argv[4])
+outdir = os.path.expanduser(sys.argv[4])
+if not os.path.exists(outdir):
+    print "Output path does not exist"
+    sys.exit()
+bed_dir = os.path.join(outdir + 'BED/')
+if not os.path.exists(bed_dir):
+    os.makedirs(bed_dir)
 try:
-    popoutfile = os.path.expanduser(sys.argv[5])
-    plotoutfile = os.path.expanduser(sys.argv[6])
+    popoutfile = os.path.join(outdir, sys.argv[5])
+    plotoutfile = os.path.join(outdir, sys.argv[6])
 except IndexError:
     popoutfile = "None"
     plotoutfile = "None"
-
 
 indlist = []
 for i in range(numinds):
@@ -80,33 +86,27 @@ for i in range(numinds):
                  MigPropMat = migmat,
                  labels = labels,
                  split_parents = True)
-#        P = ped.Pedigree(migmat, labels = labels)
-#        P.SortLeafNode()
         M_leaflist, M_nodelist = P.SortLeafNode(P.mother_indlist)
         F_leaflist, F_nodelist = P.SortLeafNode(P.father_indlist)
         M_TMat = P.BuildTransMatrices(M_leaflist, M_nodelist)[0]
         F_TMat = P.BuildTransMatrices(F_leaflist, F_nodelist)[0]
         
-#        P.BuildTransMatrices()
-#        tracts_ind = P.PSMC_ind(ChromLengths)
         tracts_ind = P.PSMC_ind(M_TMat, F_TMat, M_leaflist, F_leaflist, ChromLengths)
     else:
         print "Unknown simulation mathod"
         sys.exit
-
+    ## Save simulated individual to list
     indlist.append(tracts_ind)
-    
-    if bedpath != "None":
-        if not os.path.exists(bedpath):
-            os.makedirs(bedpath)
-#        outfile = os.path.join(bedpath, "IND" + str(i + 1))
-#        samp_ind.to_bed_file(outfile)
-        outfile = os.path.join(bedpath, "IND" + str(i + 1))
+    ## Write simulated individuals to BED files
+    if bed_dir != "None":
+        outfile = os.path.join(bed_dir, "IND" + str(i + 1))
         ped.tracts_ind_to_bed(tracts_ind, outfile, conv = "M->cM")
-    
+
+## Plot tracts distribution for simulated population
 pop = tracts.population(list_indivs = indlist)
 pop.plot_global_tractlengths(colordict, outfile = plotoutfile)
 
+## Option to write population instance to file
 if popoutfile != "None":
     popoutpath = os.path.dirname(popoutfile)
     if not os.path.exists(popoutpath):
