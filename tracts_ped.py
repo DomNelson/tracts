@@ -10,7 +10,7 @@ import scipy.sparse
 import PIL.ImageDraw as ImageDraw, PIL.Image as Image, PIL.ImageFont as ImageFont
 import sys
 import tracts
-from collections import defaultdict, OrderedDict
+from collections import defaultdict, OrderedDict, Counter
 import copy
 
 def weighted_choice(weights):
@@ -131,6 +131,34 @@ class Pedigree:
         
         return ordered_lineage, position_dict
 
+    def ped_to_migmat(self, indlist):
+        ind_depths = defaultdict(list)
+        ancestries = set()
+        for ind in indlist:
+            ancestries.add(ind.ancestry)
+            ind_depths[ind.depth].append(ind.ancestry)
+        
+        ## Change ancestries to list to preserve order of elements
+        ancestries.remove(None)
+        ancestries = list(ancestries)
+        
+        ## migdict[i].values() gives a list of ancestry totals, which sum to
+        ## the total number of individuals at depth i
+        migdict = defaultdict(int)
+        for i in range(np.max(ind_depths.keys()) + 1):
+#            print i
+#            print ind_depths[i]
+            migdict[i] = Counter(ind_depths[i]) 
+            
+        migmat = []
+        for i in range(np.max(ind_depths.keys()) + 1):
+            numinds = np.sum(migdict[i].values())
+            gen = [1. * migdict[i][anc] / numinds for anc in ancestries]
+            migmat.append(gen)
+            
+        return migmat, ancestries
+            
+            
 
     def set_ped_from_migmat(self):
         ## Subtract one from length of migration matrix because it
@@ -167,27 +195,26 @@ class Pedigree:
         else:                                             
             self.indlist = self.build_ped(len(self.MigPropMat) - 1,
                                         sampleind = sampleind)
-
-
-    def set_ped_fromfile(self):
+                                        
+    def load_pedfile(self, pedfile):
         ped_data = np.genfromtxt(fname = self.pedfile, skip_header = 1, 
                                              usecols = (0, 1, 2))
         indices = range(len(ped_data[:,0]))
         indlist = map(int, ped_data[:,0].tolist())
-        self.fathers = map(int, ped_data[:,1].tolist())
-        self.mothers = map(int, ped_data[:,2].tolist())
-        self.ind_dict = dict(zip(ped_data[:,0], indices))
-        # index_to_father_dict = dict(zip(indices, fathers))
-        # index_to_mother_dict = dict(zip(indices, mothers))
+        fathers = map(int, ped_data[:,1].tolist())
+        mothers = map(int, ped_data[:,2].tolist())
+        ind_dict = dict(zip(ped_data[:,0], indices))
+
+        ## Used to build the proband list more quickly
         father_to_index_dict = dict(zip(ped_data[:,1], indices))
         mother_to_index_dict = dict(zip(ped_data[:,2], indices))
         build_offspr_dict = defaultdict(list)
         
-        for i, ind in enumerate(self.mothers):
+        for i, ind in enumerate(mothers):
             build_offspr_dict[ind].append(indlist[i])
-        for i, ind in enumerate(self.fathers):
+        for i, ind in enumerate(fathers):
             build_offspr_dict[ind].append(indlist[i])
-        self.offspring_dict = dict(build_offspr_dict)
+        offspring_dict = dict(build_offspr_dict)
 
         probands = [indlist[i] for i,n in enumerate(indlist) if
                     (indlist[i] not in mother_to_index_dict and
@@ -196,7 +223,19 @@ class Pedigree:
         if len(probands) > 1:
             print "Error: pedigree has more than one root"
             sys.exit()
+            
+        return indlist, fathers, mothers, probands, offspring_dict, ind_dict
 
+
+    def set_ped_fromfile(self):
+        ## First load pedigree data
+        alldata = self.load_pedfile(self.pedfile)
+        indlist = alldata[0]
+        self.fathers = alldata[1]
+        self.mothers = alldata[2]
+        probands = alldata[3]
+        self.offspring_dict = alldata[4]
+        self.ind_dict = alldata[5]
         ## Now we set ancestry from the file provided. Individuals not assigned
         ## in the file are set to 'None'
         ancestries = np.genfromtxt(fname=self.ancfile, skip_header=1, usecols=(0,1))
