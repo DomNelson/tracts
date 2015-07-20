@@ -56,16 +56,20 @@ class Pedigree:
             self.sampleind = sampleind
         self.DemeSwitch = DemeSwitch
 
+        ## Build the pedigree and individuals using either a pedigree file
+        ## or a migration matrix
         if pedfile is not None:
-            self.set_ped_fromfile()
-            if split_parents is True:
-                self.mother_indlist, self.father_indlist = self.split_pedigree(self.indlist)
+            self.indlist = self.set_ped_fromfile()
         elif MigPropMat is not None:
             if labels is None:
                 self.labels = range(len(MigPropMat[0]))
             else:
                 self.labels = labels            
-            self.set_ped_from_migmat()
+            self.indlist = self.set_ped_from_migmat()
+        ## If we are simulating using PSMC we need to separate the pedigree
+        ## into maternal and paternal sides.
+        if split_parents is True:
+            self.mother_indlist, self.father_indlist = self.split_pedigree(self.indlist)
 
     def split_pedigree(self, inds):
         ## Make a copy so we don't modify the original individuals
@@ -146,17 +150,17 @@ class Pedigree:
         ## the total number of individuals at depth i
         migdict = defaultdict(int)
         for i in range(np.max(ind_depths.keys()) + 1):
-#            print i
-#            print ind_depths[i]
             migdict[i] = Counter(ind_depths[i]) 
             
+        ##@@ This could surely be done in the above loop if this ends up
+        ## being slow
         migmat = []
         for i in range(np.max(ind_depths.keys()) + 1):
             numinds = np.sum(migdict[i].values())
-            gen = [1. * migdict[i][anc] / numinds for anc in ancestries]
+            gen = np.array([1. * migdict[i][anc] / numinds for anc in ancestries])
             migmat.append(gen)
             
-        return migmat, ancestries
+        return np.array(migmat), ancestries
             
             
 
@@ -173,28 +177,29 @@ class Pedigree:
         
         ## If true, we build separate pedigrees on the maternal and paternal
         ## sides.
-        if self.split_parents is True:
-            print "Building separate maternal/paternal pedigrees"
-            sampleparents = self.set_parents(sampleind)
-            ## Remove descendants of parents so they become the root of their
-            ## respective pedigrees.
-            for parent in sampleparents:
-                parent.descendants = []
-                parent.position = []
-            ## We set the individual and their parents, so the remaining pedigrees
-            ## are 2 generations shorter than the migration matrix
-            self.mother_indlist = self.build_ped(len(self.MigPropMat) - 2,
-                                                 sampleind = sampleparents[0])
-            self.father_indlist = self.build_ped(len(self.MigPropMat) - 2,
-                                                 sampleind = sampleparents[1])
-            self.indlist = [sampleind] + self.mother_indlist + self.father_indlist
-            ## Now adjsut the depth of all individuals to account for split
-            for ind in self.indlist:
-                ind.depth -= 1
+#        if self.split_parents is True:
+#            print "Building separate maternal/paternal pedigrees"
+#            sampleparents = self.set_parents(sampleind)
+#            ## Remove descendants of parents so they become the root of their
+#            ## respective pedigrees.
+#            for parent in sampleparents:
+#                parent.descendants = []
+#                parent.position = []
+#            ## We set the individual and their parents, so the remaining pedigrees
+#            ## are 2 generations shorter than the migration matrix
+#            self.mother_indlist = self.build_ped(len(self.MigPropMat) - 2,
+#                                                 sampleind = sampleparents[0])
+#            self.father_indlist = self.build_ped(len(self.MigPropMat) - 2,
+#                                                 sampleind = sampleparents[1])
+#            self.indlist = [sampleind] + self.mother_indlist + self.father_indlist
+#            ## Now adjsut the depth of all individuals to account for split
+#            for ind in self.indlist:
+#                ind.depth -= 1
 
-        else:                                             
-            self.indlist = self.build_ped(len(self.MigPropMat) - 1,
-                                        sampleind = sampleind)
+#        else:                                             
+        indlist = self.build_ped(len(self.MigPropMat) - 1,
+                                    sampleind = sampleind)
+        return indlist
                                         
     def load_pedfile(self, pedfile):
         ped_data = np.genfromtxt(fname = self.pedfile, skip_header = 1, 
@@ -269,9 +274,9 @@ class Pedigree:
             ped_to_tracts_dict[ind].descendants = desc_list
             ped_to_tracts_dict[ind].parentlist = parent_list
 
-        self.indlist = inds
+#        self.indlist = inds
 
-        return indlist, depths, positions, ancestries
+        return inds#indlist, depths, positions, ancestries
 
 
     def build_descendants_dict(self, inds):
