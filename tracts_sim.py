@@ -36,14 +36,16 @@ colordict = {0:'red', 1:'blue', 2:'green'}
 #                0.741095623349923]
                 
 
-cM_ChromLengths = [ 277.6846783 ,  263.4266571 ,  224.5261258 ,  212.8558223 ,
-                203.9634184 ,  192.9822446 ,  186.9212679 ,  170.2156421 ,
-                168.2431216 ,  179.0947462 ,  159.5132079 ,  172.8505693 ,
-                126.9025447 ,  116.3957107 ,  131.405539  ,  134.9600594 ,
-                129.2943145 ,  119.0324459 ,  107.8670432 ,  108.0521931 ,
-                61.46827149,   72.68689882]
+#cM_ChromLengths = [ 277.6846783 ,  263.4266571 ,  224.5261258 ,  212.8558223 ,
+#                203.9634184 ,  192.9822446 ,  186.9212679 ,  170.2156421 ,
+#                168.2431216 ,  179.0947462 ,  159.5132079 ,  172.8505693 ,
+#                126.9025447 ,  116.3957107 ,  131.405539  ,  134.9600594 ,
+#                129.2943145 ,  119.0324459 ,  107.8670432 ,  108.0521931 ,
+#                61.46827149,   72.68689882]
+#
+#ChromLengths = [length / 100. for length in cM_ChromLengths]
 
-ChromLengths = [length / 100. for length in cM_ChromLengths]
+ChromLengths = [30]
 
 migfile = sys.argv[1]
 if migfile != "None":
@@ -124,6 +126,7 @@ for i in range(numinds):
 
 ## Plot tracts distribution for simulated population
 pop = tracts.population(list_indivs = indlist)
+(bins, data) = pop.get_global_tractlength_table(npts=50)
 if plotoutfile != "None":
     plotoutfile = os.path.join(outdir, plotoutfile)
     pop.plot_global_tractlengths(colordict, outfile = plotoutfile)
