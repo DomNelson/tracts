@@ -67,12 +67,13 @@ if not os.path.exists(outdir):
 bed_dir = os.path.join(outdir + 'BED/')
 if not os.path.exists(bed_dir):
     os.makedirs(bed_dir)
-try:
-    popoutfile = sys.argv[7]
-    plotoutfile = sys.argv[8]
-except IndexError:
-    popoutfile = "None"
-    plotoutfile = "None"
+popname = sys.argv[7]
+#try:
+#    popoutfile = sys.argv[7]
+#    plotoutfile = sys.argv[8]
+#except IndexError:
+#    popoutfile = "None"
+#    plotoutfile = "None"
 
 indlist = []
 for i in range(numinds):
@@ -126,18 +127,44 @@ for i in range(numinds):
 
 ## Plot tracts distribution for simulated population
 pop = tracts.population(list_indivs = indlist)
-(bins, data) = pop.get_global_tractlength_table(npts=50)
-if plotoutfile != "None":
-    plotoutfile = os.path.join(outdir, plotoutfile)
-    pop.plot_global_tractlengths(colordict, outfile = plotoutfile)
+(bins, data) = pop.get_global_tractlengths(npts=50)
+#outdir = "./out"
+if migmat is None:
+    migmat, ancestries = P.ped_to_migmat(P.indlist)
+D = tracts.demographic_model(mig=migmat)
+
+with open(outdir + popname + "_bins", 'w') as fbins:
+    fbins.write("\t".join(map(str, bins)))
+
+with open(outdir + popname + "_dat", 'w') as fdat:
+    for label in data.keys():
+        fdat.write("\t".join(map(str, data[label])) + "\n")
+
+with open(outdir + popname + "_mig", 'w') as fmig:
+    for line in D.mig:
+        fmig.write("\t".join(map(str, line)) + "\n")
+
+with open(outdir + popname + "_pred", 'w') as fpred:
+    for popnum in range(len(data)):
+        fpred.write(
+            "\t".join(map(
+                str,
+                pop.nind * np.array(D.expectperbin(ChromLengths, popnum, bins))))
+            + "\n")
+            
+            
+#if plotoutfile != "None":
+#plotoutfile = os.path.join(outdir, plotoutfile)
+#plotoutfile = os.path.join(outdir, popname, '_plot.png')            
+#pop.plot_global_tractlengths(colordict, outfile = plotoutfile)
 
 ## Option to write population instance to file
-if popoutfile != "None":
-    os.path.join(outdir, popoutfile)
-    popoutpath = os.path.dirname(popoutfile)
-    if not os.path.exists(popoutpath):
-        os.makedirs(popoutpath)
-    with open(popoutfile, 'wb') as f:
-        cPickle.dump(pop, f, cPickle.HIGHEST_PROTOCOL)
+#if popoutfile != "None":
+#    os.path.join(outdir, popoutfile)
+#    popoutpath = os.path.dirname(popoutfile)
+#    if not os.path.exists(popoutpath):
+#        os.makedirs(popoutpath)
+#    with open(popoutfile, 'wb') as f:
+#        cPickle.dump(pop, f, cPickle.HIGHEST_PROTOCOL)
         
 
