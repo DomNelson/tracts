@@ -60,9 +60,13 @@ else:
 
 M_leaflist, M_nodelist = P.SortLeafNode(P.mother_indlist)
 F_leaflist, F_nodelist = P.SortLeafNode(P.father_indlist)
-M_TMat = P.BuildTransMatrices(M_leaflist, M_nodelist)[0]
-F_TMat = P.BuildTransMatrices(F_leaflist, F_nodelist)[0]
+M_TMat = P.BuildTransMatrices(M_leaflist, M_nodelist)
+F_TMat = P.BuildTransMatrices(F_leaflist, F_nodelist)
     
+print M_leaflist
+print F_leaflist
+print M_TMat
+print F_TMat
 #print P.TMat
 #for leaf in P.leaflist:
 #    print leaf.ancestry
