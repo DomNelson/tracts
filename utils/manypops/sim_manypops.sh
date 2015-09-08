@@ -20,6 +20,7 @@ echo Forward simulations on a group of migration matrices as requested by Simon 
 PLOTOUT=$NEWDIR/${POPNAME}_plot.png
 POPOUT=$NEWDIR/${POPNAME}_pop.pkl
 BEDOUT=$NEWDIR/$POPNAME/
+mkdir $BEDOUT
 
 echo Parameters: >> $NEWDIR/notes.txt
 echo $MIGFILE >> $NEWDIR/notes.txt
@@ -33,8 +34,9 @@ cd ~/project/tracts
 for ((i=1; i<=$NUMPOPS; i++)); do
 	echo Simulating $POPNAME population $i of $NUMPOPS
 	BEDOUTNUM=$BEDOUT$i/
-	POPOUTNUM=None
-	PLOTOUTNUM=$NEWDIR/${POPNAME}/${POPNAME}${i}_plot.png
+    mkdir $BEDOUTNUM
+	POPOUTNUM=${POPNAME}${i}
 
-	python tracts_sim.py $MIGFILE None None $NUMINDS forward $BEDOUTNUM $POPOUTNUM $PLOTOUTNUM
+	#python tracts_sim.py $MIGFILE None None $NUMINDS forward $BEDOUTNUM $POPOUTNUM $PLOTOUTNUM
+    python tracts_sim.py $MIGFILE None None $NUMINDS forward $BEDOUTNUM $POPOUTNUM
 done
