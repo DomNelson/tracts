@@ -15,7 +15,7 @@ git diff >> $NEWDIR/git_info.txt
 
 cp $(basename $0) $NEWDIR/$(basename $0)
 
-echo Forward simulations on a group of migration matrices as requested by Simon  > $NEWDIR/notes.txt
+echo Forward simulations on a group of migration matrices as requested by Simon > $NEWDIR/notes.txt
 
 PLOTOUT=$NEWDIR/${POPNAME}_plot.png
 POPOUT=$NEWDIR/${POPNAME}_pop.pkl
@@ -36,5 +36,5 @@ for ((i=1; i<=$NUMPOPS; i++)); do
 	POPOUTNUM=None
 	PLOTOUTNUM=$NEWDIR/${POPNAME}/${POPNAME}${i}_plot.png
 
-	python tracts_sim.py $MIGFILE $NUMINDS $BEDOUTNUM $POPOUTNUM $PLOTOUTNUM
+	python tracts_sim.py $MIGFILE None None $NUMINDS forward $BEDOUTNUM $POPOUTNUM $PLOTOUTNUM
 done
