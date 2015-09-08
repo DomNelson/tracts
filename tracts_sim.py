@@ -18,7 +18,7 @@ DemeSwitch = 0.1 # Chance of child leaving deme of parents
 rho = 1 # Recombination rate
 ##@@ AllAncestry = True is assumed to assign parents ie no ancestry means you
 ## are not a leaf
-labels = ['EUR', 'NAT', 'AFR']
+
 #colordict = {'EUR':'red', 'NAT':'blue', 'AFR':'green'}
 #colordict = {'EUR':'yellow', 'NAT':'green'}
 colordict = {0:'red', 1:'blue', 2:'green'}
@@ -36,38 +36,45 @@ colordict = {0:'red', 1:'blue', 2:'green'}
 #                0.741095623349923]
                 
 
-#cM_ChromLengths = [ 277.6846783 ,  263.4266571 ,  224.5261258 ,  212.8558223 ,
-#                203.9634184 ,  192.9822446 ,  186.9212679 ,  170.2156421 ,
-#                168.2431216 ,  179.0947462 ,  159.5132079 ,  172.8505693 ,
-#                126.9025447 ,  116.3957107 ,  131.405539  ,  134.9600594 ,
-#                129.2943145 ,  119.0324459 ,  107.8670432 ,  108.0521931 ,
-#                61.46827149,   72.68689882]
-#
-#ChromLengths = [length / 100. for length in cM_ChromLengths]
+cM_ChromLengths = [ 277.6846783 ,  263.4266571 ,  224.5261258 ,  212.8558223 ,
+                203.9634184 ,  192.9822446 ,  186.9212679 ,  170.2156421 ,
+                168.2431216 ,  179.0947462 ,  159.5132079 ,  172.8505693 ,
+                126.9025447 ,  116.3957107 ,  131.405539  ,  134.9600594 ,
+                129.2943145 ,  119.0324459 ,  107.8670432 ,  108.0521931 ,
+                61.46827149,   72.68689882]
 
-ChromLengths = [30]
+ChromLengths = [length / 100. for length in cM_ChromLengths]
 
-migfile = sys.argv[1]
-if migfile != "None":
-    migmat = np.genfromtxt(migfile)
-else:
-    migmat = None
-pedfile = sys.argv[2]
-if pedfile == "None":
-    pedfile = None
-ancfile = sys.argv[3]
-if ancfile == "None":
-    ancfile = None
-numinds = int(sys.argv[4])
-method = sys.argv[5]
-outdir = os.path.expanduser(sys.argv[6])
-if not os.path.exists(outdir):
-    print "Output path does not exist"
+#ChromLengths = [30]
+
+try:
+    migfile = sys.argv[1]
+    if migfile != "None":
+        migmat = np.genfromtxt(migfile)
+        labels = ['AFR', 'EUR', 'NAT']
+    else:
+        migmat = None
+        labels = None
+    pedfile = sys.argv[2]
+    if pedfile == "None":
+        pedfile = None
+    ancfile = sys.argv[3]
+    if ancfile == "None":
+        ancfile = None
+    numinds = int(sys.argv[4])
+    method = sys.argv[5]
+    outdir = os.path.expanduser(sys.argv[6])
+    if not os.path.exists(outdir):
+        print "Output path does not exist"
+        sys.exit()
+    bed_dir = os.path.join(outdir + 'BED/')
+    if not os.path.exists(bed_dir):
+        os.makedirs(bed_dir)
+    popname = sys.argv[7]
+except IndexError:
+    print "Usage:"
+    print "python tracts_sim.py migfile pedfile ancfile numinds method=[forward,PSMC] outdir popname"
     sys.exit()
-bed_dir = os.path.join(outdir + 'BED/')
-if not os.path.exists(bed_dir):
-    os.makedirs(bed_dir)
-popname = sys.argv[7]
 #try:
 #    popoutfile = sys.argv[7]
 #    plotoutfile = sys.argv[8]
@@ -131,6 +138,7 @@ pop = tracts.population(list_indivs = indlist)
 #outdir = "./out"
 if migmat is None:
     migmat, ancestries = P.ped_to_migmat(P.indlist)
+    print ancestries
 D = tracts.demographic_model(mig=migmat)
 
 with open(outdir + popname + "_bins", 'w') as fbins:
