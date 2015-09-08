@@ -243,10 +243,12 @@ class Pedigree:
         self.ind_dict = alldata[5]
         ## Now we set ancestry from the file provided. Individuals not assigned
         ## in the file are set to 'None'
-        ancestries = np.genfromtxt(fname=self.ancfile, skip_header=1, usecols=(0,1))
+        ancestries = np.genfromtxt(fname=self.ancfile, skip_header=1, 
+                                usecols=(0,1), autostrip=True,
+                                dtype=[int, 'S10'])
         anc_dict = defaultdict(lambda: None)
-        for i in range(len(ancestries[:,0])):
-            anc_dict[ancestries[:,0][i]] = int(ancestries[:,1][i])
+        for i in range(len(zip(*ancestries)[0])):
+            anc_dict[zip(*ancestries)[0][i]] = zip(*ancestries)[1][i]
 
         ## Ancestor depth is the same as the distance from the proband
         depths, positions = self.ordered_lineage(probands[0])
@@ -412,6 +414,9 @@ class Pedigree:
         return leaflist, nodelist
 
     def BuildTransMatrices(self, leaflist, nodelist, rho = 1):
+        if len(leaflist) == 1:
+            print "Error: migrants from penultimate generation should be removed"
+            sys.exit()
         ## Create 'biggest possible' matrices, even though some branches may
         ## terminate early at recent migrants. Two rows for each possible node
         ## (maternal and paternal side), and one for each possible leaf.
@@ -533,9 +538,17 @@ class Pedigree:
             ## the indlist
             self.indlist = [hapind] + self.indlist
 
-    def PSMC_chromosome(self, TMat, leaflist, chromlength, rho):
+    def PSMC_chromosome(self, TMat, leaflist, chromlength, rho, smoothed=True):
+        ## If there is only one leaf on this section of/whole pedigree, then
+        ## it will pass a whole chromosome with its ancestry.
+        if len(leaflist) == 1:
+            tractlist = [tracts.tract(0, chromlength, leaflist[0].ancestry)]
+            chrom = tracts.chrom(tracts=tractlist)
+            return chrom
         tractlist = []
-        leafindex = np.random.randint(len(leaflist))
+        # leafindex = np.random.randint(len(leaflist))
+        transprobs = [1./(2**leaf.depth) for leaf in leaflist]
+        leafindex = np.random.choice(range(len(leaflist)), p=transprobs)
         leaf = leaflist[leafindex]
         startpnt = 0
         Lambda = rho * (leaf.depth)
@@ -543,18 +556,19 @@ class Pedigree:
         ## Fill in all tracts up to the last one, which is done after
         while endpnt < chromlength:
             tractlist.append(tracts.tract(startpnt, endpnt, leaf.ancestry))
-            ## Now build the next tract
-            startpnt = endpnt
-            Lambda = rho * (leaf.depth)
-            endpnt = endpnt + np.random.exponential(1. / Lambda)
+            ## Now switch to the next ancestor/leaf
             transprobs = TMat[leafindex]
             ##@@ This could be sped up using weighted_choice function
             leafindex = np.random.choice(range(len(leaflist)), p=transprobs)
             leaf = leaflist[leafindex]
+            startpnt = endpnt
+            Lambda = rho * (leaf.depth)
+            endpnt = endpnt + np.random.exponential(1. / Lambda)            
         ## Fill in the last tract and build chromosome
         tractlist.append(tracts.tract(startpnt, chromlength, leaf.ancestry))
         chrom = tracts.chrom(tracts = tractlist)
-        chrom._smooth()
+        if smoothed is True:
+            chrom._smooth()
         
         return chrom
         
@@ -567,12 +581,14 @@ class Pedigree:
         return chropair        
 
     def PSMC_ind(self, M_TMat, F_TMat, M_leaflist, F_leaflist, 
-                chromlengths, rho=1.):
+                chromlengths, rho=1., smoothed=True):
         indiv = tracts.indiv(Ls = chromlengths, label = "None")
         chropairs = []
         for length in chromlengths:
-            mother_chrom = self.PSMC_chromosome(M_TMat, M_leaflist, length, rho)
-            father_chrom = self.PSMC_chromosome(F_TMat, F_leaflist, length, rho)
+            mother_chrom = self.PSMC_chromosome(M_TMat, M_leaflist, length, 
+                                                rho, smoothed=smoothed)
+            father_chrom = self.PSMC_chromosome(F_TMat, F_leaflist, length, 
+                                                rho, smoothed=smoothed)
             chropairs.append(tracts.chropair([mother_chrom, father_chrom]))
         indiv.chroms = chropairs
         
