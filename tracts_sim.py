@@ -10,7 +10,6 @@ import tracts_ped as ped
 import os
 import tracts
 import sys
-import cPickle
 
 # MigrantProps = [0.2, 0.05] # Proportion of pedigree that will be new migrants
 # MigPropMat = [[8, 0.1, 0], [12, 0, 0.1]]
@@ -19,9 +18,9 @@ rho = 1 # Recombination rate
 ##@@ AllAncestry = True is assumed to assign parents ie no ancestry means you
 ## are not a leaf
 
-#colordict = {'EUR':'red', 'NAT':'blue', 'AFR':'green'}
+colordict = {'EUR':'red', 'NAT':'blue', 'AFR':'green'}
 #colordict = {'EUR':'yellow', 'NAT':'green'}
-colordict = {0:'red', 1:'blue', 2:'green'}
+#colordict = {0:'red', 1:'blue', 2:'green'}
 #colordict = {'AFR':'red', 'EUR':'blue'}#, 2:'green'}
 
 
@@ -51,7 +50,8 @@ try:
     migfile = sys.argv[1]
     if migfile != "None":
         migmat = np.genfromtxt(migfile)
-        labels = ['AFR', 'EUR', 'NAT']
+        labels = ['EUR', 'NAT', 'AFR']
+#        labels = range(len(migmat[0]))
     else:
         migmat = None
         labels = None
@@ -67,7 +67,7 @@ try:
     if not os.path.exists(outdir):
         print "Output path does not exist"
         sys.exit()
-    bed_dir = os.path.join(outdir + 'BED/')
+    bed_dir = outdir#os.path.join(outdir + 'BED/')
     if not os.path.exists(bed_dir):
         os.makedirs(bed_dir)
     popname = sys.argv[7]
@@ -84,7 +84,7 @@ except IndexError:
 
 indlist = []
 for i in range(numinds):
-    print "Simulating individual", i, "of", numinds                     
+#    print "Simulating individual", i, "of", numinds                     
     if method == "forward":
         P = ped.Pedigree(sampleind = None, 
                  DemeSwitch = DemeSwitch,
@@ -134,37 +134,37 @@ for i in range(numinds):
 
 ## Plot tracts distribution for simulated population
 pop = tracts.population(list_indivs = indlist)
-(bins, data) = pop.get_global_tractlengths(npts=50)
-#outdir = "./out"
-if migmat is None:
-    migmat, ancestries = P.ped_to_migmat(P.indlist)
-    print ancestries
-D = tracts.demographic_model(mig=migmat)
-
-with open(outdir + popname + "_bins", 'w') as fbins:
-    fbins.write("\t".join(map(str, bins)))
-
-with open(outdir + popname + "_dat", 'w') as fdat:
-    for label in data.keys():
-        fdat.write("\t".join(map(str, data[label])) + "\n")
-
-with open(outdir + popname + "_mig", 'w') as fmig:
-    for line in D.mig:
-        fmig.write("\t".join(map(str, line)) + "\n")
-
-with open(outdir + popname + "_pred", 'w') as fpred:
-    for popnum in range(len(data)):
-        fpred.write(
-            "\t".join(map(
-                str,
-                pop.nind * np.array(D.expectperbin(ChromLengths, popnum, bins))))
-            + "\n")
+#(bins, data) = pop.get_global_tractlengths(npts=50)
+##outdir = "./out"
+#if migmat is None:
+#    migmat, ancestries = P.ped_to_migmat(P.indlist)
+#    print ancestries
+#D = tracts.demographic_model(mig=migmat)
+#
+#with open(outdir + popname + "_bins", 'w') as fbins:
+#    fbins.write("\t".join(map(str, bins)))
+#
+#with open(outdir + popname + "_dat", 'w') as fdat:
+#    for label in data.keys():
+#        fdat.write("\t".join(map(str, data[label])) + "\n")
+#
+#with open(outdir + popname + "_mig", 'w') as fmig:
+#    for line in D.mig:
+#        fmig.write("\t".join(map(str, line)) + "\n")
+#
+#with open(outdir + popname + "_pred", 'w') as fpred:
+#    for popnum in range(len(data)):
+#        fpred.write(
+#            "\t".join(map(
+#                str,
+#                pop.nind * np.array(D.expectperbin(ChromLengths, popnum, bins))))
+#            + "\n")
             
             
 #if plotoutfile != "None":
 #plotoutfile = os.path.join(outdir, plotoutfile)
-#plotoutfile = os.path.join(outdir, popname, '_plot.png')            
-#pop.plot_global_tractlengths(colordict, outfile = plotoutfile)
+plotoutfile = os.path.join(outdir, popname + '_plot.png')            
+pop.plot_global_tractlengths(colordict, outfile = plotoutfile)
 
 ## Option to write population instance to file
 #if popoutfile != "None":
