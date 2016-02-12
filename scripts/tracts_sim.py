@@ -10,6 +10,8 @@ import tracts_ped as ped
 import os
 import tracts
 import sys
+import time
+import numpy as np
 
 # MigrantProps = [0.2, 0.05] # Proportion of pedigree that will be new migrants
 # MigPropMat = [[8, 0.1, 0], [12, 0, 0.1]]
@@ -25,15 +27,15 @@ colordict = {'EUR':'red', 'NAT':'blue', 'AFR':'green'}
 
 
 
-#ChromLengths = [2.865747830, 2.64751457082595, 2.23363180733515, 
-#                2.15492839808593, 2.04089356863902, 1.92039918028429, 
-#                1.87852676459211, 1.68003441747308, 1.78206001355185, 
+#ChromLengths = [2.865747830, 2.64751457082595, 2.23363180733515,
+#                2.15492839808593, 2.04089356863902, 1.92039918028429,
+#                1.87852676459211, 1.68003441747308, 1.78206001355185,
 #                1.81366917101923, 1.58218649890248, 1.74679023161126,
-#                1.26778791112187, 1.20202583329567, 1.39297570875973, 
-#                1.340377262456, 1.2849052927734, 1.17708922675517, 
-#                1.07733846085975, 1.08266933913055, 0.627864782064372, 
+#                1.26778791112187, 1.20202583329567, 1.39297570875973,
+#                1.340377262456, 1.2849052927734, 1.17708922675517,
+#                1.07733846085975, 1.08266933913055, 0.627864782064372,
 #                0.741095623349923]
-                
+
 
 cM_ChromLengths = [ 277.6846783 ,  263.4266571 ,  224.5261258 ,  212.8558223 ,
                 203.9634184 ,  192.9822446 ,  186.9212679 ,  170.2156421 ,
@@ -83,10 +85,15 @@ except IndexError:
 #    plotoutfile = "None"
 
 indlist = []
+times = []
 for i in range(numinds):
-#    print "Simulating individual", i, "of", numinds                     
+    start_time = time.time()
+
+    if i % 100 == 0:
+        print "Simulating individual", i, "of", numinds
+
     if method == "forward":
-        P = ped.Pedigree(sampleind = None, 
+        P = ped.Pedigree(sampleind = None,
                  DemeSwitch = DemeSwitch,
                  MigPropMat = migmat,
                  pedfile = pedfile,
@@ -106,10 +113,11 @@ for i in range(numinds):
             print samp_ind
             sys.exit()
         tracts_ind = samp_ind.to_tracts_indiv()
+
     ## We split the pedigree into maternal/paternal sides when simulating with
     ## PSMC
     elif method == "PSMC":
-        P = ped.Pedigree(sampleind = None, 
+        P = ped.Pedigree(sampleind = None,
                  DemeSwitch = DemeSwitch,
                  MigPropMat = migmat,
                  pedfile = pedfile,
@@ -120,7 +128,7 @@ for i in range(numinds):
         F_leaflist, F_nodelist = P.SortLeafNode(P.father_indlist)
         M_TMat = P.BuildTransMatrices(M_leaflist, M_nodelist)
         F_TMat = P.BuildTransMatrices(F_leaflist, F_nodelist)
-        
+
         tracts_ind = P.PSMC_ind(M_TMat, F_TMat, M_leaflist, F_leaflist, ChromLengths)
     else:
         print "Unknown simulation method"
@@ -128,9 +136,14 @@ for i in range(numinds):
     ## Save simulated individual to list
     indlist.append(tracts_ind)
     ## Write simulated individuals to BED files
-    if bed_dir != "None":
-        outfile = os.path.join(bed_dir, "IND" + str(i + 1))
-        ped.tracts_ind_to_bed(tracts_ind, outfile, conv = "M->cM")
+    # if bed_dir != "None":
+    #     outfile = os.path.join(bed_dir, "IND" + str(i + 1))
+    #     ped.tracts_ind_to_bed(tracts_ind, outfile, conv = "M->cM")
+
+    times.append(time.time() - start_time)
+
+print "Number of generations simulated:", len(P.MigPropMat)
+print "Average time per simulated individual:", np.mean(times)
 
 ## Plot tracts distribution for simulated population
 pop = tracts.population(list_indivs = indlist)
@@ -159,11 +172,9 @@ pop = tracts.population(list_indivs = indlist)
 #                str,
 #                pop.nind * np.array(D.expectperbin(ChromLengths, popnum, bins))))
 #            + "\n")
-            
-            
-#if plotoutfile != "None":
-#plotoutfile = os.path.join(outdir, plotoutfile)
-plotoutfile = os.path.join(outdir, popname + '_plot.png')            
+
+
+plotoutfile = os.path.join(outdir, popname + '_plot.png')
 pop.plot_global_tractlengths(colordict, outfile = plotoutfile)
 
 ## Option to write population instance to file
@@ -174,5 +185,3 @@ pop.plot_global_tractlengths(colordict, outfile = plotoutfile)
 #        os.makedirs(popoutpath)
 #    with open(popoutfile, 'wb') as f:
 #        cPickle.dump(pop, f, cPickle.HIGHEST_PROTOCOL)
-        
-
